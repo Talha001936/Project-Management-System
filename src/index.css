@@ -1,0 +1,65 @@
+
+
+.MuiMenuItem-root:hover {
+  background-color: rgba(108, 99, 255, 0.08) !important;
+}
+.MuiMenuItem-root.Mui-selected {
+  background-color: rgba(108, 99, 255, 0.12) !important;
+}
+
+
+
+
+.MuiAutocomplete-option:hover {
+  background-color: rgba(108, 99, 255, 0.08) !important;
+}
+.MuiAutocomplete-option[aria-selected="true"] {
+  background-color: rgba(108, 99, 255, 0.12) !important;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background-color: #0d0d0d;
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #2a2a2a;
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #3a3a3a;
+}
+
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a2a #0d0d0d;
+}
+
+
+.MuiDialog-paper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.MuiDialog-paper::-webkit-scrollbar-track {
+  background-color: #0d0d0d;
+  border-radius: 4px;
+}
+
+.MuiDialog-paper::-webkit-scrollbar-thumb {
+  background-color: #2a2a2a;
+  border-radius: 4px;
+}
+.MuiDialog-paper::-webkit-scrollbar-thumb:hover {
+  background-color: #3a3a3a;
+}
+
+.MuiDialog-paper {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a2a #0d0d0d;
+}
