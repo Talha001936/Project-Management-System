@@ -1,6 +1,7 @@
 // Note: This file is used to manage teams. It fetches team data, displays it in a table, 
 // and provides modals for adding/editing teams and viewing team details, all of which
 // happen using reusable components.
+
 import TeamManagement from "../components/teams/TeamManagement.jsx";
 import { Box, Typography } from "@mui/material";
 
