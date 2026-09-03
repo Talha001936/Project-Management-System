@@ -109,45 +109,6 @@ export const createUser = async (req, res) => {
   }
 };
 
-// // Update user for admin only
-// export const updateUser = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const { name, email, password, role, active } = req.body;
-
-//     const user = findUserById(Number(id));
-//     if (!user) {
-//       return res.status(404).json({ message: 'User not found' });
-//     }
-
-//     if (user.role === 'admin' && role && role !== 'admin') {
-//       return res.status(400).json({ message: 'Cannot change admin role' });
-//     }
-
-//     if (name) user.name = name;
-//     if (email) {
-//       const db = getDatabase();
-//       const existing = db.users.find(u => u.email === email && u.id !== user.id);
-//       if (existing) {
-//         return res.status(400).json({ message: 'Email already in use' });
-//       }
-//       user.email = email;
-//     }
-//     if (password) {
-//       user.password = await hashPassword(password);
-//     }
-//     if (role) user.role = role;
-//     if (active !== undefined) user.active = active;
-
-//     await saveDatabase();
-
-//     const { password: _, ...userData } = user;
-//     res.json(userData);
-//   } catch (error) {
-//     console.error('Update user error:', error);
-//     res.status(500).json({ message: 'Failed to update user' });
-//   }
-// };
 
 // Delete user for admin only
 export const deleteUser = async (req, res) => {
