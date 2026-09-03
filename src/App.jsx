@@ -1,5 +1,4 @@
-// src/App.jsx
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Container } from "@mui/material";
 import Navbar from "./components/Navbar.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
@@ -12,37 +11,67 @@ import Projects from "./pages/Projects.jsx";
 import Tasks from "./pages/Tasks.jsx";
 import Teams from "./pages/Teams.jsx";
 import Unauthorized from "./pages/Unauthorized.jsx";
+import NotFound from "./pages/NotFound.jsx";
+import { useAuth } from "./context/AuthContext.jsx";
+
+function AppLayout({ children }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+  
+  const hideNavbar = !user || loading || 
+    location.pathname === '/login' || 
+    location.pathname === '/register' || 
+    location.pathname === '/unauthorized';
+  
+  return (
+    <>
+      {!hideNavbar && <Navbar />}
+      <Container sx={{ py: 4 }}>{children}</Container>
+    </>
+  );
+}
+
+function getRoleDashboardPath() {
+  const user = JSON.parse(localStorage.getItem('pms_user') || sessionStorage.getItem('pms_user') || '{}');
+  const role = user?.role || 'employee';
+  return `/${role}/dashboard`;
+}
 
 export default function App() {
   return (
-    <>
-      <Navbar />
-      <Container sx={{ py: 4 }}>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/unauthorized" element={<Unauthorized />} />
+    <Routes>
+      <Route path="/login" element={<Container sx={{ py: 4 }}><Login /></Container>} />
+      <Route path="/register" element={<Container sx={{ py: 4 }}><Register /></Container>} />
+      <Route path="/unauthorized" element={<Container sx={{ py: 4 }}><Unauthorized /></Container>} />
 
-          {/* Protected routes - all authenticated users can access these */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/tasks" element={<Tasks />} />
-            
-            {/* Role protected routes */}
-            <Route element={<RoleRoute roles={["admin", "manager"]} />}>
-              <Route path="/teams" element={<Teams />} />
-            </Route>
+      <Route element={<ProtectedRoute />}>
+       
+        <Route element={<RoleRoute roles={["admin"]} />}>
+          <Route path="/admin/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
+          <Route path="/admin/projects" element={<AppLayout><Projects /></AppLayout>} />
+          <Route path="/admin/tasks" element={<AppLayout><Tasks /></AppLayout>} />
+          <Route path="/admin/teams" element={<AppLayout><Teams /></AppLayout>} />
+          <Route path="/admin/users" element={<AppLayout><Users /></AppLayout>} />
+        </Route>
 
-            <Route element={<RoleRoute roles={["admin"]} />}>
-              <Route path="/users" element={<Users />} />
-            </Route>
-          </Route>
+        <Route element={<RoleRoute roles={["manager"]} />}>
+          <Route path="/manager/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
+          <Route path="/manager/projects" element={<AppLayout><Projects /></AppLayout>} />
+          <Route path="/manager/tasks" element={<AppLayout><Tasks /></AppLayout>} />
+          <Route path="/manager/teams" element={<AppLayout><Teams /></AppLayout>} />
+        </Route>
 
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </Container>
-    </>
+        <Route element={<RoleRoute roles={["employee"]} />}>
+          <Route path="/employee/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
+          <Route path="/employee/projects" element={<AppLayout><Projects /></AppLayout>} />
+          <Route path="/employee/tasks" element={<AppLayout><Tasks /></AppLayout>} />
+        </Route>
+
+        <Route path="/dashboard" element={<Navigate to={getRoleDashboardPath()} replace />} />
+      </Route>
+
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
