@@ -1,3 +1,7 @@
+//Note: This file defines the custom theme for the application using Material-UI's createTheme function.
+//  It sets up a dark mode theme with specific colors for primary, secondary, background, text, and other 
+// UI elements. It also includes style overrides for various Material-UI components to ensure a consistent
+//  look and feel across the application.
 import { createTheme } from "@mui/material/styles";
 
 export const theme = createTheme({
@@ -20,14 +24,28 @@ export const theme = createTheme({
       secondary: "#888888",
     },
     divider: "#2a2a2a",
+    error: {
+      main: "#d45454",
+    },
+    success: {
+      main: "#4a9e4a",
+    },
+    warning: {
+      main: "#f0a030",
+    },
   },
   shape: {
     borderRadius: 8,
   },
   components: {
-    
-   
-    
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: {
+          backgroundColor: "#0d0d0d",
+          color: "#e8e8e8",
+        },
+      },
+    },
     MuiDialog: {
       styleOverrides: {
         paper: {
@@ -58,7 +76,12 @@ export const theme = createTheme({
             background: "linear-gradient(135deg, #5a52e8 0%, #3a32b8 100%)",
           },
         },
-       
+        containedError: {
+          background: "linear-gradient(135deg, #d45454 0%, #a84444 100%)",
+          '&:hover': {
+            background: "linear-gradient(135deg, #c04444 0%, #8a3a3a 100%)",
+          },
+        },
       },
     },
     MuiTextField: {
@@ -146,6 +169,20 @@ export const theme = createTheme({
           '&.Mui-focused': {
             color: "#8b83ff",
           },
+        },
+      },
+    },
+    MuiAlert: {
+      styleOverrides: {
+        root: {
+          borderRadius: "8px",
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: "none",
         },
       },
     },
