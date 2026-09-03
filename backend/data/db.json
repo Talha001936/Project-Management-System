@@ -1,0 +1,537 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice Admin",
+      "email": "admin@pms.com",
+      "password": "$2b$08$goh/bKJ0jGStfgSme/IhSuM9rPwNkCNnlHjvJRcDAjj.a/cRcxc3O",
+      "role": "admin",
+      "active": true,
+      "createdAt": "2026-01-01T09:00:00Z",
+      "lastLogin": "2026-09-03T11:18:06.655Z"
+    },
+    {
+      "id": 2,
+      "name": "Mark Manager",
+      "email": "manager@pms.com",
+      "password": "$2b$08$SYONnUw7ve7U3zigYhQe3OP2WW7DGM7Dfl5N1BU4YEAwbLBm/uKuG",
+      "role": "manager",
+      "active": true,
+      "createdAt": "2026-01-02T09:00:00Z",
+      "lastLogin": "2026-09-03T11:19:38.843Z"
+    },
+    {
+      "id": 3,
+      "name": "Eve Employee",
+      "email": "employee@pms.com",
+      "password": "$2b$08$ZDQmzIbFOagQcMg4kehcmu1N.loItOCaC2pLJmx8FYwBHUEM5dUGy",
+      "role": "employee",
+      "active": true,
+      "createdAt": "2026-01-03T09:00:00Z",
+      "lastLogin": "2026-09-03T11:20:12.976Z"
+    },
+    {
+      "id": 4,
+      "name": "John Employee",
+      "email": "john@pms.com",
+      "password": "$2b$08$ZDQmzIbFOagQcMg4kehcmu1N.loItOCaC2pLJmx8FYwBHUEM5dUGy",
+      "role": "employee",
+      "active": true,
+      "createdAt": "2026-01-04T09:00:00Z",
+      "lastLogin": null
+    },
+    {
+      "id": 5,
+      "name": "Sarah Employee",
+      "email": "sarah@pms.com",
+      "password": "$2b$08$ZDQmzIbFOagQcMg4kehcmu1N.loItOCaC2pLJmx8FYwBHUEM5dUGy",
+      "role": "manager",
+      "active": true,
+      "createdAt": "2026-01-05T09:00:00Z",
+      "lastLogin": null
+    },
+    {
+      "id": 6,
+      "name": "Talha Developer",
+      "email": "talha@pms.com",
+      "password": "$2b$08$ZDQmzIbFOagQcMg4kehcmu1N.loItOCaC2pLJmx8FYwBHUEM5dUGy",
+      "role": "employee",
+      "active": true,
+      "createdAt": "2026-01-06T09:00:00Z",
+      "lastLogin": null
+    },
+    {
+      "id": 7,
+      "name": "Maria Designer",
+      "email": "maria@pms.com",
+      "password": "$2b$08$ZDQmzIbFOagQcMg4kehcmu1N.loItOCaC2pLJmx8FYwBHUEM5dUGy",
+      "role": "manager",
+      "active": true,
+      "createdAt": "2026-02-01T09:00:00Z",
+      "lastLogin": null
+    },
+    {
+      "id": 8,
+      "name": "David Tester",
+      "email": "david@pms.com",
+      "password": "$2b$08$ZDQmzIbFOagQcMg4kehcmu1N.loItOCaC2pLJmx8FYwBHUEM5dUGy",
+      "role": "employee",
+      "active": true,
+      "createdAt": "2026-02-02T09:00:00Z",
+      "lastLogin": null
+    },
+    {
+      "id": 9,
+      "name": "Lisa Analyst",
+      "email": "lisa@pms.com",
+      "password": "$2b$08$ZDQmzIbFOagQcMg4kehcmu1N.loItOCaC2pLJmx8FYwBHUEM5dUGy",
+      "role": "employee",
+      "active": true,
+      "createdAt": "2026-02-03T09:00:00Z",
+      "lastLogin": null
+    },
+    {
+      "id": 10,
+      "name": "Robert Product Owner",
+      "email": "robert@pms.com",
+      "password": "$2b$08$SYONnUw7ve7U3zigYhQe3OP2WW7DGM7Dfl5N1BU4YEAwbLBm/uKuG",
+      "role": "manager",
+      "active": true,
+      "createdAt": "2026-02-04T09:00:00Z",
+      "lastLogin": null
+    },
+    {
+      "id": 1788431837916,
+      "name": "maroosh",
+      "email": "maroosh@pms.com",
+      "password": "$2a$10$JhUWaMDkQ7ZE/TJl9OJkae5Y04rFxbQKP71y7RyAhMF7sT3uejOle",
+      "role": "manager",
+      "active": true,
+      "createdAt": "2026-09-03T10:37:17.208Z",
+      "lastLogin": "2026-09-03T10:37:35.954Z"
+    },
+    {
+      "id": 1788434255039,
+      "name": "hizar",
+      "email": "hizar@pms.com",
+      "password": "$2a$10$h9jWcWQrtxs4q1Joy1Gb1OT6qZJRUbHywm.8bY8DpavNoVrCiEQLq",
+      "role": "employee",
+      "active": false,
+      "createdAt": "2026-09-03T11:17:34.725Z",
+      "lastLogin": "2026-09-03T11:17:45.285Z"
+    }
+  ],
+  "teams": [
+    {
+      "id": 1,
+      "name": "Frontend Team",
+      "members": [
+        3,
+        4,
+        6,
+        7
+      ],
+      "leaderId": 2,
+      "createdBy": 1,
+      "createdAt": "2026-01-15T10:00:00Z",
+      "updatedAt": "2026-01-15T10:00:00Z"
+    },
+    {
+      "id": 2,
+      "name": "Backend Team",
+      "members": [
+        5,
+        8
+      ],
+      "leaderId": 2,
+      "createdBy": 1,
+      "createdAt": "2026-01-20T10:00:00Z",
+      "updatedAt": "2026-01-20T10:00:00Z"
+    },
+    {
+      "id": 4,
+      "name": "QA Team",
+      "members": [
+        8,
+        3
+      ],
+      "leaderId": 2,
+      "createdBy": 1,
+      "createdAt": "2026-02-05T10:00:00Z",
+      "updatedAt": "2026-02-05T10:00:00Z"
+    }
+  ],
+  "projects": [
+    {
+      "id": 1,
+      "name": "Website Revamp",
+      "description": "Redesign company website with modern UI and improved user experience",
+      "managerId": 2,
+      "teamIds": [
+        1
+      ],
+      "individualMembers": [
+        10,
+        2,
+        7
+      ],
+      "createdBy": 1,
+      "status": "active",
+      "priority": "high",
+      "createdAt": "2026-01-15T10:00:00Z",
+      "updatedAt": "2026-09-02T08:10:44.174Z"
+    },
+    {
+      "id": 2,
+      "name": "Mobile App Development",
+      "description": "Build React Native mobile app for iOS and Android with offline support",
+      "managerId": 2,
+      "teamIds": [
+        1,
+        2
+      ],
+      "individualMembers": [
+        6
+      ],
+      "createdBy": 1,
+      "status": "active",
+      "priority": "high",
+      "createdAt": "2026-01-20T10:00:00Z",
+      "updatedAt": "2026-02-25T09:15:00Z"
+    },
+    {
+      "id": 3,
+      "name": "Backend API Migration",
+      "description": "Migrate legacy REST API to modern GraphQL architecture",
+      "managerId": 2,
+      "teamIds": [
+        2
+      ],
+      "individualMembers": [
+        3,
+        5
+      ],
+      "createdBy": 1,
+      "status": "active",
+      "priority": "high",
+      "createdAt": "2026-01-25T10:00:00Z",
+      "updatedAt": "2026-02-28T16:45:00Z"
+    },
+    {
+      "id": 4,
+      "name": "Team Management System (TMS)",
+      "description": "Internal tool for team management, task tracking, and performance monitoring",
+      "managerId": 10,
+      "teamIds": [
+        4
+      ],
+      "individualMembers": [
+        2,
+        6
+      ],
+      "createdBy": 1,
+      "status": "active",
+      "priority": "medium",
+      "createdAt": "2026-08-28T13:08:49.264Z",
+      "updatedAt": "2026-09-01T11:20:00Z"
+    },
+    {
+      "id": 5,
+      "name": "Customer Portal",
+      "description": "Build self-service customer portal with ticket management and knowledge base",
+      "managerId": 10,
+      "teamIds": [
+        1,
+        4
+      ],
+      "individualMembers": [
+        3,
+        8
+      ],
+      "createdBy": 1,
+      "status": "active",
+      "priority": "medium",
+      "createdAt": "2026-02-01T10:00:00Z",
+      "updatedAt": "2026-03-01T13:00:00Z"
+    },
+    {
+      "id": 6,
+      "name": "Analytics Dashboard",
+      "description": "Real-time analytics dashboard with interactive charts and data visualization",
+      "managerId": 2,
+      "teamIds": [
+        2
+      ],
+      "individualMembers": [
+        4,
+        8
+      ],
+      "createdBy": 1,
+      "status": "completed",
+      "priority": "medium",
+      "createdAt": "2026-01-10T10:00:00Z",
+      "updatedAt": "2026-02-15T17:30:00Z"
+    },
+    {
+      "id": 7,
+      "name": "Security Audit & Compliance",
+      "description": "Comprehensive security audit and compliance implementation for GDPR and SOC2",
+      "managerId": 10,
+      "teamIds": [
+        2
+      ],
+      "individualMembers": [
+        5,
+        8
+      ],
+      "createdBy": 1,
+      "status": "archived",
+      "priority": "high",
+      "createdAt": "2026-01-05T10:00:00Z",
+      "updatedAt": "2026-02-10T12:00:00Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Design homepage mockup",
+      "description": "Create high-fidelity homepage design with new brand guidelines",
+      "projectId": 1,
+      "assigneeId": 7,
+      "status": "done",
+      "priority": "high",
+      "createdBy": 2,
+      "createdAt": "2026-01-15T10:30:00Z",
+      "updatedAt": "2026-01-20T16:00:00Z"
+    },
+    {
+      "id": 2,
+      "title": "Setup React Native project structure",
+      "description": "Initialize React Native project with navigation, state management, and folder structure",
+      "projectId": 2,
+      "assigneeId": 6,
+      "status": "todo",
+      "priority": "high",
+      "createdBy": 2,
+      "createdAt": "2026-01-20T11:00:00Z",
+      "updatedAt": "2026-01-21T09:00:00Z"
+    },
+    {
+      "id": 3,
+      "title": "Database schema design",
+      "description": "Design PostgreSQL schema for new GraphQL API with proper relationships",
+      "projectId": 3,
+      "assigneeId": 5,
+      "status": "done",
+      "priority": "high",
+      "createdBy": 1,
+      "createdAt": "2026-01-25T10:30:00Z",
+      "updatedAt": "2026-01-27T15:00:00Z"
+    },
+    {
+      "id": 4,
+      "title": "Implement JWT authentication",
+      "description": "Add JWT-based authentication with refresh tokens for API security",
+      "projectId": 3,
+      "assigneeId": 5,
+      "status": "in-progress",
+      "priority": "high",
+      "createdBy": 2,
+      "createdAt": "2026-01-28T09:00:00Z",
+      "updatedAt": "2026-02-01T14:30:00Z"
+    },
+    {
+      "id": 5,
+      "title": "Build user registration flow",
+      "description": "Create user registration with email verification and profile setup",
+      "projectId": 4,
+      "assigneeId": 6,
+      "status": "todo",
+      "priority": "medium",
+      "createdBy": 10,
+      "createdAt": "2026-08-29T10:00:00Z",
+      "updatedAt": "2026-08-29T10:00:00Z"
+    },
+    {
+      "id": 6,
+      "title": "Create task management UI",
+      "description": "Build drag-and-drop task board with Kanban view",
+      "projectId": 4,
+      "assigneeId": 3,
+      "status": "review",
+      "priority": "high",
+      "createdBy": 10,
+      "createdAt": "2026-08-30T09:00:00Z",
+      "updatedAt": "2026-09-03T11:20:28.723Z"
+    },
+    {
+      "id": 7,
+      "title": "Implement team management features",
+      "description": "Add team creation, member assignment, and team permissions",
+      "projectId": 4,
+      "assigneeId": 2,
+      "status": "in-progress",
+      "priority": "medium",
+      "createdBy": 1,
+      "createdAt": "2026-08-31T14:00:00Z",
+      "updatedAt": "2026-09-03T11:19:53.408Z"
+    },
+    {
+      "id": 8,
+      "title": "Create responsive navigation bar",
+      "description": "Build responsive navigation with dropdowns and mobile menu",
+      "projectId": 1,
+      "assigneeId": 4,
+      "status": "todo",
+      "priority": "medium",
+      "createdBy": 2,
+      "createdAt": "2026-02-01T10:00:00Z",
+      "updatedAt": "2026-02-02T10:00:00Z"
+    },
+    {
+      "id": 9,
+      "title": "Implement search functionality",
+      "description": "Add global search with filters and real-time results",
+      "projectId": 5,
+      "assigneeId": 3,
+      "status": "todo",
+      "priority": "medium",
+      "createdBy": 10,
+      "createdAt": "2026-02-02T10:00:00Z",
+      "updatedAt": "2026-02-03T10:00:00Z"
+    },
+    {
+      "id": 10,
+      "title": "Create API documentation",
+      "description": "Write comprehensive API documentation with examples and authentication guide",
+      "projectId": 3,
+      "assigneeId": 8,
+      "status": "done",
+      "priority": "low",
+      "createdBy": 2,
+      "createdAt": "2026-02-03T10:00:00Z",
+      "updatedAt": "2026-02-05T16:00:00Z"
+    },
+    {
+      "id": 11,
+      "title": "Design mobile app screens",
+      "description": "Create UI/UX designs for all mobile app screens with user flows",
+      "projectId": 2,
+      "assigneeId": 7,
+      "status": "in-progress",
+      "priority": "high",
+      "createdBy": 2,
+      "createdAt": "2026-02-04T10:00:00Z",
+      "updatedAt": "2026-02-06T14:00:00Z"
+    },
+    {
+      "id": 12,
+      "title": "Set up CI/CD pipeline",
+      "description": "Configure GitHub Actions for automated testing and deployment",
+      "projectId": 6,
+      "assigneeId": 5,
+      "status": "done",
+      "priority": "medium",
+      "createdBy": 2,
+      "createdAt": "2026-01-12T10:00:00Z",
+      "updatedAt": "2026-01-18T17:00:00Z"
+    },
+    {
+      "id": 13,
+      "title": "Implement real-time notifications",
+      "description": "Add WebSocket support for real-time notifications and updates",
+      "projectId": 4,
+      "assigneeId": 8,
+      "status": "todo",
+      "priority": "high",
+      "createdBy": 10,
+      "createdAt": "2026-09-01T09:00:00Z",
+      "updatedAt": "2026-09-01T09:00:00Z"
+    },
+    {
+      "id": 14,
+      "title": "Create user profile page",
+      "description": "Build user profile with avatar upload, bio, and activity history",
+      "projectId": 5,
+      "assigneeId": 4,
+      "status": "review",
+      "priority": "medium",
+      "createdBy": 10,
+      "createdAt": "2026-02-05T10:00:00Z",
+      "updatedAt": "2026-02-07T15:30:00Z"
+    },
+    {
+      "id": 15,
+      "title": "Implement role-based access control",
+      "description": "Add granular permissions for admin, manager, and employee roles",
+      "projectId": 4,
+      "assigneeId": 2,
+      "status": "done",
+      "priority": "high",
+      "createdBy": 1,
+      "createdAt": "2026-08-28T14:00:00Z",
+      "updatedAt": "2026-08-30T17:00:00Z"
+    },
+    {
+      "id": 16,
+      "title": "Create data export functionality",
+      "description": "Add export to CSV/Excel for reports and analytics",
+      "projectId": 6,
+      "assigneeId": 8,
+      "status": "done",
+      "priority": "low",
+      "createdBy": 2,
+      "createdAt": "2026-01-14T10:00:00Z",
+      "updatedAt": "2026-01-20T16:00:00Z"
+    },
+    {
+      "id": 17,
+      "title": "Implement dark mode theme",
+      "description": "Add dark mode support with theme switching and persistence",
+      "projectId": 5,
+      "assigneeId": 7,
+      "status": "todo",
+      "priority": "low",
+      "createdBy": 10,
+      "createdAt": "2026-02-06T10:00:00Z",
+      "updatedAt": "2026-02-07T10:00:00Z"
+    },
+    {
+      "id": 18,
+      "title": "Create automated test suite",
+      "description": "Write unit tests and integration tests for critical features",
+      "projectId": 3,
+      "assigneeId": 8,
+      "status": "in-progress",
+      "priority": "medium",
+      "createdBy": 2,
+      "createdAt": "2026-02-07T10:00:00Z",
+      "updatedAt": "2026-02-08T14:00:00Z"
+    },
+    {
+      "id": 19,
+      "title": "Optimize database queries",
+      "description": "Add indexes and optimize slow queries for better performance",
+      "projectId": 3,
+      "assigneeId": 5,
+      "status": "todo",
+      "priority": "high",
+      "createdBy": 2,
+      "createdAt": "2026-02-08T10:00:00Z",
+      "updatedAt": "2026-02-09T10:00:00Z"
+    },
+    {
+      "id": 20,
+      "title": "Implement caching layer",
+      "description": "Add Redis caching for frequently accessed data",
+      "projectId": 3,
+      "assigneeId": 5,
+      "status": "todo",
+      "priority": "medium",
+      "createdBy": 2,
+      "createdAt": "2026-02-09T10:00:00Z",
+      "updatedAt": "2026-02-10T10:00:00Z"
+    }
+  ],
+  "sessions": []
+}
