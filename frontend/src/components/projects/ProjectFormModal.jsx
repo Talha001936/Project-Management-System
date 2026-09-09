@@ -1,5 +1,5 @@
-// Note: This file defines a ProjectFormModal component that provides a modal form for creating or editing projects.
-import { useEffect, useState } from "react";
+
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   TextField,
   Select,
@@ -14,10 +14,10 @@ import { useApi } from "../../hooks/useApi.js";
 import BaseModal from "../common/BaseModal.jsx";
 import ConfirmationDialog from "../common/ConfirmationDialog.jsx";
 import api from "../../api/axios.js";
-
 import { tokenStorage } from "../../utils/tokenStorage.js";
 import { hasValidSession } from "../../utils/permissions.js";
 import { useToast } from "../../hooks/useToast.jsx";
+import { getUserName, getTeamName } from "../../utils/helpers.js";
 
 const INITIAL = {
   name: "",
@@ -25,18 +25,6 @@ const INITIAL = {
   teamIds: [],
   individualMembers: [],
   managerId: "",
-};
-
-const getUserName = (id, users) => {
-  if (!id) return "Unassigned";
-  const user = users?.find((u) => Number(u.id) === Number(id));
-  return user?.name || `User #${id}`;
-};
-
-const getTeamName = (id, teams) => {
-  if (!id) return "No team";
-  const team = teams?.find((t) => Number(t.id) === Number(id));
-  return team?.name || `Team #${id}`;
 };
 
 export default function ProjectFormModal({
@@ -48,18 +36,22 @@ export default function ProjectFormModal({
   editingProject,
 }) {
   const { user } = useAuth();
-  const { showSuccess, showError, showInfo, showWarning } = useToast();
+  const { showSuccess, showError, showInfo } = useToast();
   const { loading, error, setError, execute } = useApi();
   const { form, setForm, handleChange, handleMultiSelectChange, resetForm } = useForm(INITIAL);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [showCreateConfirm, setShowCreateConfirm] = useState(false);
   const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [available, setAvailable] = useState({
-    users: [],
-    managers: [],
-    teams: [],
-  });
+
+  const filteredUsers = useMemo(() => {
+    if (user.role === "admin") {
+      return users.filter(u => u.role === "manager" || u.role === "admin");
+    } else if (user.role === "manager") {
+      return users.filter(u => Number(u.id) === Number(user.id));
+    }
+    return [];
+  }, [users, user]);
 
   const validateSession = () => {
     if (!hasValidSession()) {
@@ -75,64 +67,33 @@ export default function ProjectFormModal({
 
   useEffect(() => {
     if (open) {
-      setForm(
-        editingProject
-          ? {
-              name: editingProject.name || "",
-              description: editingProject.description || "",
-              teamIds: editingProject.teamIds || [],
-              individualMembers: editingProject.individualMembers || [],
-              managerId: editingProject.managerId || "",
-            }
-          : INITIAL,
-      );
-      
+      if (editingProject) {
+        setForm({
+          name: editingProject.name || "",
+          description: editingProject.description || "",
+          teamIds: editingProject.teamIds || [],
+          individualMembers: editingProject.individualMembers || [],
+          managerId: editingProject.managerId || "",
+        });
+      } else {
+        
+        if (user.role === "manager") {
+          setForm({
+            ...INITIAL,
+            managerId: user.id,
+          });
+        } else {
+          setForm(INITIAL);
+        }
+      }
       setShowCloseConfirm(false);
       setShowCreateConfirm(false);
       setShowUpdateConfirm(false);
       setError("");
     }
-  }, [editingProject, open]);
+  }, [editingProject, open, setForm, setError, user]);
 
-  useEffect(() => {
-    if (!users.length || !teams.length) return;
-
-    let filteredUsers = [],
-      filteredTeams = [];
-    const isAdmin = user.role === "admin";
-    const isManager = user.role === "manager";
-
-    if (isAdmin) {
-      filteredUsers = users.filter((u) => u.role !== "admin" && u.active);
-      filteredTeams = teams;
-    } else if (isManager) {
-      const managerTeamIds = teams
-        .filter((t) => t.leaderId === user.id)
-        .map((t) => t.id);
-      const memberIds = new Set([user.id]);
-      teams
-        .filter((t) => managerTeamIds.includes(t.id))
-        .forEach((t) => t.members?.forEach((id) => memberIds.add(Number(id))));
-      filteredUsers = users.filter(
-        (u) => memberIds.has(Number(u.id)) && u.active && u.role !== "admin",
-      );
-      filteredTeams = teams.filter((t) => t.leaderId === user.id);
-    } else {
-      filteredUsers = users.filter((u) => Number(u.id) === user.id && u.active);
-      filteredTeams = [];
-    }
-
-    const managers = isAdmin
-      ? users.filter(
-          (u) => (u.role === "admin" || u.role === "manager") && u.active,
-        )
-      : isManager
-        ? users.filter((u) => Number(u.id) === user.id && u.active)
-        : [];
-
-    setAvailable({ users: filteredUsers, managers, teams: filteredTeams });
-  }, [users, teams, user]);
-
+  // Auto-add team leaders to members
   useEffect(() => {
     if (!form.teamIds?.length || !teams.length) return;
     const leaderIds = new Set();
@@ -145,13 +106,13 @@ export default function ProjectFormModal({
     const newMembers = Array.from(current);
     if (
       JSON.stringify(newMembers.sort()) !==
-      JSON.stringify(form.individualMembers.sort())
+      JSON.stringify(form.individualMembers.slice().sort())
     ) {
       setForm((prev) => ({ ...prev, individualMembers: newMembers }));
     }
-  }, [form.teamIds, teams]);
+  }, [form.teamIds, teams, setForm, form.individualMembers]);
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (!validateSession()) return;
     
     if (!form.name || !form.managerId) {
@@ -178,9 +139,9 @@ export default function ProjectFormModal({
     } else {
       setShowCreateConfirm(true);
     }
-  };
+  }, [form, editingProject, setError, showError, showInfo]);
 
-  const performSubmit = async () => {
+  const performSubmit = useCallback(async () => {
     if (!validateSession()) return;
     
     setIsSubmitting(true);
@@ -189,34 +150,36 @@ export default function ProjectFormModal({
       createdBy: user.id,
       status: editingProject?.status || "active",
     };
+    
     const call = editingProject
       ? () => api.put(`/projects/${editingProject.id}`, data)
       : () => api.post("/projects", data);
     
     try {
       await execute(call);
-      // showSuccess(editingProject ? "Project updated successfully" : "Project created successfully");
+      showSuccess(editingProject ? "Project updated successfully" : "Project created successfully");
       setShowCreateConfirm(false);
       setShowUpdateConfirm(false);
       setIsSubmitting(false);
       resetForm();
-      onSuccess?.();
+      if (onSuccess) onSuccess();
       handleCloseModal();
     } catch (err) {
       setIsSubmitting(false);
-      showError(err?.response?.data?.message || "Failed to save project");
+      const errorMsg = err?.response?.data?.message || "Failed to save project";
+      showError(errorMsg);
     }
-  };
+  }, [form, editingProject, user.id, execute, showSuccess, showError, resetForm, onSuccess]);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     resetForm();
     setShowCloseConfirm(false);
     setShowCreateConfirm(false);
     setShowUpdateConfirm(false);
     onClose();
-  };
+  }, [resetForm, onClose]);
 
-  const handleCloseAttempt = () => {
+  const handleCloseAttempt = useCallback(() => {
     if (isSubmitting || !open) return;
     
     if (!validateSession()) {
@@ -244,7 +207,7 @@ export default function ProjectFormModal({
     } else {
       handleCloseModal();
     }
-  };
+  }, [form, editingProject, loading, isSubmitting, open, handleCloseModal, validateSession]);
 
   const selectStyle = {
     backgroundColor: "#0d0d0d",
@@ -344,20 +307,25 @@ export default function ProjectFormModal({
         <FormControl fullWidth required sx={{ mb: 2 }}>
           <InputLabel sx={{ color: "#888888" }}>Project Manager</InputLabel>
           <Select
-            value={form.managerId}
+            value={form.managerId || ""}
             onChange={(e) => setForm({ ...form, managerId: e.target.value })}
             label="Project Manager"
             sx={selectStyle}
             MenuProps={menuProps}
+            disabled={user.role === "manager"} // ✅ Disable for managers
           >
-            {available.managers.map((m) => (
-              <MenuItem key={m.id} value={m.id} sx={menuItemStyle}>
-                {getUserName(m.id, users)} ({m.role})
-              </MenuItem>
-            ))}
-            {!available.managers.length && (
+            {filteredUsers.length > 0 ? (
+              filteredUsers.map((m) => (
+                <MenuItem key={m.id} value={m.id} sx={menuItemStyle}>
+                  {getUserName(m.id, users)} ({m.role})
+                  {Number(m.id) === Number(user.id) && " (You)"}
+                </MenuItem>
+              ))
+            ) : (
               <MenuItem disabled sx={{ color: "#666666" }}>
-                No managers available
+                {user.role === "manager" 
+                  ? "You are the manager (auto-assigned)" 
+                  : "No managers available"}
               </MenuItem>
             )}
           </Select>
@@ -367,7 +335,7 @@ export default function ProjectFormModal({
           <InputLabel sx={{ color: "#888888" }}>Teams</InputLabel>
           <Select
             multiple
-            value={form.teamIds}
+            value={form.teamIds || []}
             input={<OutlinedInput label="Teams" />}
             onChange={handleMultiSelectChange("teamIds")}
             renderValue={(selected) =>
@@ -376,7 +344,7 @@ export default function ProjectFormModal({
             sx={selectStyle}
             MenuProps={menuProps}
           >
-            {available.teams.map((t) => (
+            {teams.map((t) => (
               <MenuItem key={t.id} value={t.id} sx={menuItemStyle}>
                 {t.name} ({t.members?.length || 0} members)
               </MenuItem>
@@ -388,7 +356,7 @@ export default function ProjectFormModal({
           <InputLabel sx={{ color: "#888888" }}>Individual Members</InputLabel>
           <Select
             multiple
-            value={form.individualMembers}
+            value={form.individualMembers || []}
             input={<OutlinedInput label="Individual Members" />}
             onChange={handleMultiSelectChange("individualMembers")}
             renderValue={(selected) =>
@@ -397,7 +365,7 @@ export default function ProjectFormModal({
             sx={selectStyle}
             MenuProps={menuProps}
           >
-            {available.users.map((u) => (
+            {users.map((u) => (
               <MenuItem key={u.id} value={u.id} sx={menuItemStyle}>
                 {u.name} ({u.role})
               </MenuItem>
