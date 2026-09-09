@@ -1,4 +1,4 @@
-
+import PropTypes from 'prop-types';
 import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from "@mui/material";
 
 export default function ConfirmationDialog({
@@ -77,3 +77,16 @@ export default function ConfirmationDialog({
     </Dialog>
   );
 }
+
+ConfirmationDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  title: PropTypes.string.isRequired,
+  message: PropTypes.string.isRequired,
+  onConfirm: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  confirmText: PropTypes.string,
+  cancelText: PropTypes.string,
+  confirmColor: PropTypes.string,
+  loading: PropTypes.bool,
+  maxWidth: PropTypes.string,
+};
