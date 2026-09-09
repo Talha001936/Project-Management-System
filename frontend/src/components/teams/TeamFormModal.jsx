@@ -1,7 +1,5 @@
-// Note: This component is a modal form for creating or editing a team. It includes fields for the team name, 
-// team leader, and team members. It also handles form validation, API calls for creating/updating teams, 
-// and confirmation dialogs for closing the form or submitting changes.
-import { useEffect, useState } from "react";
+
+import { useEffect, useState, useCallback } from "react";
 import { TextField, Select, MenuItem, FormControl, InputLabel } from "@mui/material";
 import { useForm } from "../../hooks/useForm.js";
 import { useApi } from "../../hooks/useApi.js";
@@ -11,6 +9,7 @@ import api from "../../api/axios.js";
 import { useToast } from "../../hooks/useToast.jsx";
 import { tokenStorage } from "../../utils/tokenStorage.js";
 import { hasValidSession } from "../../utils/permissions.js";
+import { getUserName } from "../../utils/helpers.js";
 
 const INITIAL = { name: "", members: [], leaderId: "" };
 
@@ -47,16 +46,15 @@ export default function TeamFormModal({ open, onClose, onSuccess, editingTeam, u
       setShowUpdateConfirm(false);
       setError("");
     }
-  }, [editingTeam, open]);
+  }, [editingTeam, open, setForm, setError]);
 
-  const getUserName = (id) => {
-    const user = users.find(u => Number(u.id) === Number(id));
-    return user ? `${user.name} (${user.role})` : `User #${id}`;
+  const getMemberNames = () => {
+    if (!form.members.length) return "No members selected";
+    return form.members.map(id => getUserName(id, users)).join(", ");
   };
 
-  const performSubmit = async () => {
+  const performSubmit = useCallback(async () => {
     if (!validateSession()) return;
-    
     setIsSubmitting(true);
     const call = editingTeam 
       ? () => api.put(`/teams/${editingTeam.id}`, form) 
@@ -69,17 +67,16 @@ export default function TeamFormModal({ open, onClose, onSuccess, editingTeam, u
       setShowUpdateConfirm(false);
       setIsSubmitting(false);
       resetForm(); 
-      onSuccess(); 
+      if (onSuccess) onSuccess();
       handleCloseModal();
     } catch (err) {
       setIsSubmitting(false);
       showError(err?.response?.data?.message || "Failed to save team");
     }
-  };
+  }, [form, editingTeam, execute, showSuccess, showError, resetForm, onSuccess]);
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (!validateSession()) return;
-    
     if (!form.name || !form.leaderId) {
       setError("Please fill in all required fields");
       showError("Please fill in all required fields");
@@ -100,24 +97,22 @@ export default function TeamFormModal({ open, onClose, onSuccess, editingTeam, u
     } else {
       setShowCreateConfirm(true);
     }
-  };
+  }, [form, editingTeam, setError, showError, showInfo]);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     resetForm();
     setShowCloseConfirm(false);
     setShowCreateConfirm(false);
     setShowUpdateConfirm(false);
     onClose();
-  };
+  }, [resetForm, onClose]);
 
-  const handleCloseAttempt = () => {
+  const handleCloseAttempt = useCallback(() => {
     if (isSubmitting || !open) return;
-    
     if (!validateSession()) {
       handleCloseModal();
       return;
     }
-    
     const isModified = editingTeam ?
       JSON.stringify(form) !== JSON.stringify({ 
         name: editingTeam.name || "", 
@@ -131,7 +126,7 @@ export default function TeamFormModal({ open, onClose, onSuccess, editingTeam, u
     } else {
       handleCloseModal();
     }
-  };
+  }, [form, editingTeam, loading, isSubmitting, open, handleCloseModal, validateSession]);
 
   const selectStyle = { 
     backgroundColor: "#0d0d0d", 
@@ -157,11 +152,6 @@ export default function TeamFormModal({ open, onClose, onSuccess, editingTeam, u
     color: "#e8e8e8", 
     '&:hover': { backgroundColor: "rgba(108,99,255,0.08)" }, 
     '&.Mui-selected': { backgroundColor: "rgba(108,99,255,0.12)" } 
-  };
-
-  const getMemberNames = () => {
-    if (!form.members.length) return "No members selected";
-    return form.members.map(id => getUserName(id)).join(", ");
   };
 
   return (
@@ -213,40 +203,39 @@ export default function TeamFormModal({ open, onClose, onSuccess, editingTeam, u
         <FormControl fullWidth required sx={{ mb: 2 }}>
           <InputLabel sx={{ color: "#888888" }}>Team Leader</InputLabel>
           <Select
-            value={form.leaderId}
+            value={form.leaderId || ""}
             onChange={(e) => setForm({ ...form, leaderId: e.target.value })}
             label="Team Leader"
             sx={selectStyle}
             MenuProps={menuProps}
           >
-            {users.map((u) => (
-              <MenuItem key={u.id} value={u.id} sx={menuItemStyle}>
-                {u.name} ({u.role})
+            {users.length > 0 ? (
+              users.map((u) => (
+                <MenuItem key={u.id} value={u.id} sx={menuItemStyle}>
+                  {getUserName(u.id, users)} ({u.role})
+                </MenuItem>
+              ))
+            ) : (
+              <MenuItem disabled sx={{ color: "#666666" }}>
+                No users available
               </MenuItem>
-            ))}
+            )}
           </Select>
         </FormControl>
         <FormControl fullWidth>
           <InputLabel sx={{ color: "#888888" }}>Team Members</InputLabel>
           <Select
             multiple
-            value={form.members}
+            value={form.members || []}
             onChange={handleMultiSelectChange("members")}
-            renderValue={(selected) =>
-              selected
-                .map((id) => {
-                  const u = users.find((u) => Number(u.id) === Number(id));
-                  return u ? `${u.name} (${u.role})` : `User #${id}`;
-                })
-                .join(", ")
-            }
+            renderValue={() => getMemberNames()}
             label="Team Members"
             sx={selectStyle}
             MenuProps={menuProps}
           >
             {users.map((u) => (
               <MenuItem key={u.id} value={u.id} sx={menuItemStyle}>
-                {u.name} ({u.role})
+                {getUserName(u.id, users)} ({u.role})
               </MenuItem>
             ))}
           </Select>
@@ -267,7 +256,7 @@ export default function TeamFormModal({ open, onClose, onSuccess, editingTeam, u
       <ConfirmationDialog
         open={showCreateConfirm}
         title="Create New Team?"
-        message={`Are you sure you want to create this team?\n\nTeam Name: ${form.name}\nTeam Leader: ${getUserName(form.leaderId)}\nMembers: ${getMemberNames()}`}
+        message={`Are you sure you want to create this team?\n\nTeam Name: ${form.name}\nTeam Leader: ${getUserName(form.leaderId, users)}\nMembers: ${getMemberNames()}`}
         onConfirm={performSubmit}
         onCancel={() => setShowCreateConfirm(false)}
         confirmText="Create Team"
@@ -278,7 +267,7 @@ export default function TeamFormModal({ open, onClose, onSuccess, editingTeam, u
       <ConfirmationDialog
         open={showUpdateConfirm}
         title="Update Team?"
-        message={`Are you sure you want to update this team?\n\nTeam Name: ${form.name}\nTeam Leader: ${getUserName(form.leaderId)}\nMembers: ${getMemberNames()}`}
+        message={`Are you sure you want to update this team?\n\nTeam Name: ${form.name}\nTeam Leader: ${getUserName(form.leaderId, users)}\nMembers: ${getMemberNames()}`}
         onConfirm={performSubmit}
         onCancel={() => setShowUpdateConfirm(false)}
         confirmText="Update Team"
