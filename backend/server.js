@@ -1,95 +1,105 @@
-// Note: This is the main server file for the backend whichsets up the Express server, 
-// applies security and rate limiting middleware, 
-// initializes the database, and defines API routes 
-
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import authRoutes from './routes/auth.routes.js';
-import userRoutes from './routes/user.routes.js';
-import projectRoutes from './routes/project.routes.js';
-import taskRoutes from './routes/task.routes.js';
-import teamRoutes from './routes/team.routes.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import routes from './routes/index.js';
 import { initializeDatabase } from './services/db.service.js';
 import { cleanupExpiredSessions } from './services/session.service.js';
+import { cleanupBlacklist, getBlacklistStats } from './services/blacklist.service.js';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '.env') });
+
+initializeDatabase();
 
 const app = express();
-const PORT = 8436;
+const PORT = process.env.PORT || 8436;
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   contentSecurityPolicy: false,
 }));
 
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'];
+
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn('blocked cors from:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
 }));
 
 app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
 
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 500, 
-  message: 'Too many requests, please try again later.',
-  skip: (req) => req.path === '/api/health' 
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  message: 'Too many requests, please try again later.'
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20, 
+  max: 20,
   message: 'Too many login attempts, please try again after 15 minutes.'
 });
 
-const strictLimiter = rateLimit({
-  windowMs: 60 * 1000, 
-  max: 30, 
-  message: 'Too many requests, please slow down.',
-  skip: (req) => req.path === '/api/health'
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Too many refresh attempts, please try again after 15 minutes.'
 });
 
 app.use('/api', globalLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
-app.use('/api/auth/refresh-token', strictLimiter);
+app.use('/api/auth/refresh-token', refreshLimiter);
 
-initializeDatabase();
+setInterval(() => {
+  cleanupExpiredSessions();
+  cleanupBlacklist();
+}, 60 * 60 * 1000);
 
-// Cleanup expired sessions periodically (every hour)
-setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
+cleanupExpiredSessions();
+cleanupBlacklist();
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/projects', projectRoutes);
-app.use('/api/tasks', taskRoutes);
-app.use('/api/teams', teamRoutes);
+app.use('/api', routes);
 
-// Health check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ 
     status: 'ok', 
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    blacklist: getBlacklistStats()
   });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ message: 'Route not found' });
+
+app.use((_req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found' });
 });
 
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('Server error:', err.message);
-  res.status(500).json({ message: 'Internal server error' });
+app.use((err, _req, res, _next) => {
+  console.error('server error:', err.message);
+  res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`server running on http://localhost:${PORT}`);
+  
 });
