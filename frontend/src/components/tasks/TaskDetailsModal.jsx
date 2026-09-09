@@ -1,6 +1,4 @@
-//Note: This file defines a TaskDetailsModal component that displays detailed information about a task 
-// in a modal dialog. It allows users to view task details, update the task status, and provides 
-// confirmation for status changes.
+
 import { useState } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, Chip, Stack, Box, Divider, Select, MenuItem, Alert } from "@mui/material";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -9,6 +7,7 @@ import { StatusChip, PriorityChip } from "../common/StatusChip.jsx";
 import ConfirmationDialog from "../common/ConfirmationDialog.jsx";
 import api from "../../api/axios.js";
 import { useToast } from "../../hooks/useToast.jsx";
+import { getUserName, getProjectName, getStatusLabel, formatDate } from "../../utils/helpers.js";
 
 const STATUSES = ["todo", "in-progress", "review", "done"];
 
@@ -21,25 +20,11 @@ export default function TaskDetailsModal({ task, open, onClose, onUpdate, users,
     newStatus: null,
   });
 
-  const getUserName = (id) => {
-    if (!id) return "Unassigned";
-    const found = users?.find((u) => Number(u.id) === Number(id));
-    return found?.name || `User #${id}`;
-  };
-
-  const getProjectName = (id) => {
-    if (!id) return "No Project";
-    const project = projects?.find((p) => Number(p.id) === Number(id));
-    return project?.name || `Project #${id}`;
-  };
-
   if (!task) {
     return null;
   }
 
-  const canUpdateStatus = user?.role === "admin" || 
-    user?.role === "manager" || 
-    (user?.role === "employee" && Number(task.assigneeId) === Number(user?.id));
+  const canUpdateStatus = task.permissions?.canUpdateStatus === true;
 
   const handleStatusUpdate = (newStatus) => {
     if (task.status === newStatus) return;
@@ -56,28 +41,12 @@ export default function TaskDetailsModal({ task, open, onClose, onUpdate, users,
       () => {
         setStatusConfirmState({ open: false, newStatus: null });
         onUpdate();
-        const statusLabels = {
-          todo: "To Do",
-          "in-progress": "In Progress",
-          review: "Review",
-          done: "Done"
-        };
-        showSuccess(`Task status updated to ${statusLabels[newStatus] || newStatus}`);
+        showSuccess(`Task status updated to ${getStatusLabel(newStatus)}`);
       },
       (error) => {
         showError(error?.response?.data?.message || "Failed to update status");
       }
     );
-  };
-
-  const getStatusLabel = (status) => {
-    const labels = {
-      todo: "To Do",
-      "in-progress": "In Progress",
-      review: "Review",
-      done: "Done"
-    };
-    return labels[status] || status;
   };
 
   const InfoRow = ({ label, value }) => (
@@ -101,6 +70,7 @@ export default function TaskDetailsModal({ task, open, onClose, onUpdate, users,
       </Typography>
     </Box>
   );
+  const isDone = task.status === "done";
 
   return (
     <>
@@ -164,86 +134,21 @@ export default function TaskDetailsModal({ task, open, onClose, onUpdate, users,
           <Stack spacing={2.5}>
             <InfoRow
               label="Project"
-              value={getProjectName(task.projectId)}
+              value={getProjectName(task.projectId, projects)}
             />
-            <InfoRow label="Assignee" value={getUserName(task.assigneeId)} />
-            <InfoRow label="Created By" value={getUserName(task.createdBy)} />
+            <InfoRow label="Assignee" value={getUserName(task.assigneeId, users)} />
             <InfoRow label="Priority" value={task.priority || "medium"} />
             <InfoRow
               label="Created At"
-              value={task.createdAt ? new Date(task.createdAt).toLocaleDateString() : "N/A"}
+              value={formatDate(task.createdAt)}
             />
             {task.updatedAt && (
               <InfoRow
                 label="Updated At"
-                value={new Date(task.updatedAt).toLocaleDateString()}
+                value={formatDate(task.updatedAt)}
               />
             )}
           </Stack>
-
-          {/* {canUpdateStatus && task.status !== "done"  && (
-            <Box sx={{ mt: 3, pt: 3, borderTop: "1px solid #2a2a2a" }}>
-              <Typography
-                variant="caption"
-                sx={{
-                  color: "#666666",
-                  fontWeight: 500,
-                  display: "block",
-                  mb: 1.5,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.5px",
-                  fontSize: "0.7rem",
-                }}
-              >
-                Update Status
-              </Typography>
-              <Select
-                size="small"
-                value={task.status || "todo"}
-                onChange={(e) => handleStatusUpdate(e.target.value)}
-                sx={{
-                  minWidth: 150,
-                  backgroundColor: "#0d0d0d",
-                  borderRadius: 1.5,
-                  "& .MuiSelect-icon": { color: "#888888" },
-                  "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#2a2a2a",
-                  },
-                  "&:hover .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#6c63ff",
-                  },
-                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#6c63ff",
-                  },
-                }}
-                MenuProps={{
-                  PaperProps: {
-                    sx: {
-                      backgroundColor: "#1a1a1a",
-                      border: "1px solid #2a2a2a",
-                      borderRadius: "8px",
-                    },
-                  },
-                }}
-              >
-                {STATUSES.map((s) => (
-                  <MenuItem
-                    key={s}
-                    value={s}
-                    sx={{
-                      color: "#e8e8e8",
-                      "&:hover": { backgroundColor: "rgba(108,99,255,0.08)" },
-                      "&.Mui-selected": {
-                        backgroundColor: "rgba(108,99,255,0.12)",
-                      },
-                    }}
-                  >
-                    <StatusChip status={s} />
-                  </MenuItem>
-                ))}
-              </Select>
-            </Box>
-          )} */}
         </DialogContent>
         <DialogActions
           sx={{ borderTop: "1px solid #2a2a2a", pt: 2, pb: 2, px: 3 }}
