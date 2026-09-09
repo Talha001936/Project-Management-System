@@ -1,16 +1,10 @@
+
 import Joi from 'joi';
 
 export const createProjectSchema = Joi.object({
-  name: Joi.string().min(3).max(100).required().messages({
-    'string.min': 'Project name must be at least 3 characters',
-    'string.max': 'Project name cannot exceed 100 characters',
-    'any.required': 'Project name is required'
-  }),
+  name: Joi.string().min(3).max(100).required(),
   description: Joi.string().max(500).allow('').optional(),
-  managerId: Joi.number().integer().positive().required().messages({
-    'number.base': 'Manager ID must be a number',
-    'any.required': 'Manager ID is required'
-  }),
+  managerId: Joi.number().integer().positive().required(),
   teamIds: Joi.array().items(Joi.number().integer().positive()).default([]),
   individualMembers: Joi.array().items(Joi.number().integer().positive()).default([]),
   status: Joi.string().valid('active', 'completed', 'archived').default('active'),
