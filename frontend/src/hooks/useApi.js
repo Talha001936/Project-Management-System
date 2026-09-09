@@ -1,66 +1,33 @@
-// Note: This file is a custom React hook that provides a way to execute API calls with automatic 
-// token refresh handling.
-import { useState, useCallback } from "react";
-import { tokenStorage } from "../utils/tokenStorage.js";
-import { isTokenExpired } from "../utils/permissions.js";
+//note Handles API calls with built-in loading/error states so components don't repeat the same code.
+import { useState, useCallback } from 'react';
 
 export function useApi() {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const execute = useCallback(async (apiCall, onSuccess, onError) => {
     setLoading(true);
-    setError("");
+    setError('');
     try {
-      const token = tokenStorage.getToken();
-      const refreshToken = tokenStorage.getRefreshToken();
-      
-      if (!token || !refreshToken) {
-        throw new Error('No authentication token found');
-      }
-      
-      if (isTokenExpired(token)) {
-        try {
-          const refreshResponse = await fetch('/api/auth/refresh-token', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ refreshToken: refreshToken })
-          });
-          
-          if (refreshResponse.ok) {
-            const data = await refreshResponse.json();
-            if (data.token) {
-              tokenStorage.setToken(data.token);
-              if (data.refreshToken) {
-                tokenStorage.setRefreshToken(data.refreshToken);
-              }
-            }
-          } else {
-            throw new Error('Session expired. Please login again.');
-          }
-        } catch (refreshError) {
-          tokenStorage.clear();
-          throw new Error('Session expired. Please login again.');
-        }
-      }
-      
       const result = await apiCall();
-      if (onSuccess) onSuccess(result);
-      return result;
-    } catch (err) {
-      const message = err.response?.data?.message || err.message || "Operation failed";
-      setError(message);
-      
-      if (err.response?.status === 401 || message === 'Session expired. Please login again.') {
-        tokenStorage.clear();
-        if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login?session=expired';
+
+      let responseData = result;
+      if (result && typeof result === 'object') {
+        if (result.success !== undefined) {
+          if (result.success === false) {
+            throw new Error(result.message || 'Operation failed');
+          }
+          responseData = result.data || result;
+        } else if (result.data) {
+          responseData = result.data;
         }
       }
-      
-      if (onError) onError(message);
+      if (onSuccess) onSuccess(responseData);
+      return responseData;
+    } catch (err) {
+      const message = err.response?.data?.message || err.message || 'Operation failed';
+      setError(message);
+      if (onError) onError(err);
       throw err;
     } finally {
       setLoading(false);
