@@ -1,5 +1,4 @@
-// Note: This file is a React component that renders the Unauthorized Access page, informing users 
-// that they do not have permission to view the requested page.
+
 import { Box, Typography, Button, Paper, Chip } from "@mui/material";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -11,12 +10,7 @@ export default function Unauthorized() {
 
   const getDashboardPath = () => {
     if (!user) return "/login";
-    switch (user.role) {
-      case "admin": return "/admin/dashboard";
-      case "manager": return "/manager/dashboard";
-      case "employee": return "/employee/dashboard";
-      default: return "/dashboard";
-    }
+    return "/dashboard";
   };
 
   return (
@@ -62,7 +56,7 @@ export default function Unauthorized() {
           color="text.secondary"
           sx={{ mb: 1 }}
         >
-          You don't have permission to view this page.
+          You dont have permission to view this page.
         </Typography>
         {user && (
           <Box sx={{ my: 2 }}>
@@ -85,7 +79,6 @@ export default function Unauthorized() {
           {user ? (
             <>
               This page requires different permissions than your current role.
-         
             </>
           ) : (
             "Please login to access this page."
