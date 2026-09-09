@@ -1,4 +1,5 @@
 
+import PropTypes from 'prop-types';
 import { Alert } from "@mui/material";
 
 export default function EmptyState({ message, severity = "info" }) {
@@ -16,3 +17,8 @@ export default function EmptyState({ message, severity = "info" }) {
     </Alert>
   );
 }
+
+EmptyState.propTypes = {
+  message: PropTypes.string.isRequired,
+  severity: PropTypes.string,
+};
