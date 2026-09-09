@@ -1,5 +1,5 @@
-// Note: This file defines a TaskFormModal component that provides a modal form for creating or editing tasks.
-import { useEffect, useState } from "react";
+
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { TextField, Select, MenuItem, FormControl, InputLabel } from "@mui/material";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useForm } from "../../hooks/useForm.js";
@@ -10,6 +10,7 @@ import api from "../../api/axios.js";
 import { useToast } from "../../hooks/useToast.jsx";
 import { tokenStorage } from "../../utils/tokenStorage.js";
 import { hasValidSession } from "../../utils/permissions.js";
+import { getUserName, getProjectName } from "../../utils/helpers.js";
 
 const INITIAL = { 
   title: "", 
@@ -35,12 +36,10 @@ export default function TaskFormModal({
   const { showSuccess, showError, showInfo } = useToast();
   const { loading, error, setError, execute } = useApi();
   const { form, setForm, handleChange, handleSelectChange, resetForm } = useForm(INITIAL);
-  const [assignees, setAssignees] = useState([]);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [showCreateConfirm, setShowCreateConfirm] = useState(false);
   const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [availableProjects, setAvailableProjects] = useState([]);
 
   const validateSession = () => {
     if (!hasValidSession()) {
@@ -73,78 +72,33 @@ export default function TaskFormModal({
       setShowUpdateConfirm(false);
       setError("");
     }
-  }, [editingTask, open]);
+  }, [editingTask, open, setForm, setError]);
 
-  useEffect(() => {
-    if (!projects.length) return;
+  // Filter projects based on user role
+  const availableProjects = useMemo(() => {
+    if (!projects.length) return [];
 
-    let filtered = [];
-    
     if (user.role === "admin") {
-      filtered = projects;
+      return projects;
     } else if (user.role === "manager") {
-      filtered = projects.filter(p => 
-        Number(p.managerId) === Number(user.id)
-      );
-    } else if (user.role === "employee") {
-      filtered = [];
+      return projects.filter(p => Number(p.managerId) === Number(user.id));
     }
-    
-    setAvailableProjects(filtered);
+    return [];
   }, [projects, user]);
 
+  // Reset assignee when project changes
   useEffect(() => {
-    if (!form.projectId || !projects.length || !teams.length || !users.length) { 
-      setAssignees([]); 
-      return; 
-    }
-    
-    const project = projects.find(p => Number(p.id) === Number(form.projectId));
-    if (!project) {
-      setAssignees([]);
-      return;
-    }
-    
-    const members = new Set();
-    project.teamIds?.forEach(id => {
-      const team = teams.find(t => Number(t.id) === Number(id));
-      team?.members?.forEach(mid => members.add(Number(mid)));
-    });
-    
-    project.individualMembers?.forEach(id => members.add(Number(id)));
-    
-    if (project.managerId) members.add(Number(project.managerId));
-    
-    let availableAssignees = users.filter(u => 
-      members.has(Number(u.id)) && u.active
-    );
-    
-    if (user.role === "manager") {
-      const isProjectManager = Number(project.managerId) === Number(user.id);
-      if (!isProjectManager) {
-        availableAssignees = availableAssignees.filter(u => Number(u.id) === Number(user.id));
-      }
-    }
-    
-    if (user.role === "employee") {
-      availableAssignees = availableAssignees.filter(u => Number(u.id) === Number(user.id));
-    }
-    
-    setAssignees(availableAssignees);
-    
-    if (editingTask && form.assigneeId) {
-      const stillValid = availableAssignees.some(u => Number(u.id) === Number(form.assigneeId));
-      if (!stillValid) {
+    if (open && !editingTask && form.projectId) {
+      const availableAssignees = users.filter(u => u.active !== false);
+      if (availableAssignees.length > 0 && !availableAssignees.some(u => Number(u.id) === Number(form.assigneeId))) {
+        setForm(prev => ({ ...prev, assigneeId: availableAssignees[0]?.id || "" }));
+      } else if (availableAssignees.length === 0) {
         setForm(prev => ({ ...prev, assigneeId: "" }));
       }
     }
-  }, [form.projectId, projects, teams, users, editingTask, user]);
+  }, [form.projectId, open, editingTask, users]);
 
-  const getName = (id, list) => list?.find(i => Number(i.id) === Number(id))?.name || `#${id}`;
-  const getProjectName = () => getName(form.projectId, projects);
-  const getAssigneeName = () => getName(form.assigneeId, users);
-
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (!validateSession()) return;
     
     if (!form.title || !form.projectId || !form.assigneeId) {
@@ -158,7 +112,8 @@ export default function TaskFormModal({
         form.description !== editingTask.description ||
         Number(form.projectId) !== Number(editingTask.projectId) || 
         Number(form.assigneeId) !== Number(editingTask.assigneeId) ||
-        form.priority !== editingTask.priority;
+        form.priority !== editingTask.priority ||
+        form.status !== editingTask.status;
       
       if (!hasChanges) { 
         showInfo("No changes to save");
@@ -169,14 +124,16 @@ export default function TaskFormModal({
     } else {
       setShowCreateConfirm(true);
     }
-  };
+  }, [form, editingTask, setError, showError, showInfo]);
 
-  const performSubmit = async () => {
+  const performSubmit = useCallback(async () => {
     if (!validateSession()) return;
     
     setIsSubmitting(true);
+    
     const data = { ...form };
     if (!editingTask) data.status = "todo";
+    
     const call = editingTask 
       ? () => api.put(`/tasks/${editingTask.id}`, data) 
       : () => api.post("/tasks", data);
@@ -188,23 +145,24 @@ export default function TaskFormModal({
       setShowUpdateConfirm(false);
       setIsSubmitting(false);
       resetForm();
-      onSuccess?.();
+      if (onSuccess) onSuccess();
       handleCloseModal();
     } catch (err) {
       setIsSubmitting(false);
-      showError(err?.response?.data?.message || "Failed to save task");
+      const errorMsg = err?.response?.data?.message || "Failed to save task";
+      showError(errorMsg);
     }
-  };
+  }, [form, editingTask, execute, showSuccess, showError, resetForm, onSuccess]);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     resetForm();
     setShowCloseConfirm(false);
     setShowCreateConfirm(false);
     setShowUpdateConfirm(false);
     onClose();
-  };
+  }, [resetForm, onClose]);
 
-  const handleCloseAttempt = () => {
+  const handleCloseAttempt = useCallback(() => {
     if (isSubmitting || !open) return;
     
     if (!validateSession()) {
@@ -228,7 +186,7 @@ export default function TaskFormModal({
     } else {
       handleCloseModal();
     }
-  };
+  }, [form, editingTask, loading, isSubmitting, open, handleCloseModal, validateSession]);
 
   const selectStyle = { 
     backgroundColor: "#0d0d0d", 
@@ -354,7 +312,6 @@ export default function TaskFormModal({
             label="Project"
             sx={selectStyle}
             MenuProps={menuProps}
-            displayEmpty
           >
             {availableProjects.length > 0 ? (
               availableProjects.map((p) => {
@@ -363,7 +320,6 @@ export default function TaskFormModal({
                   <MenuItem key={p.id} value={p.id} sx={menuItemStyle}>
                     {p.name} 
                     {isProjectManager ? " (You are Manager)" : ""}
-                    {!isProjectManager && user.role === "manager" ? " (View Only)" : ""}
                   </MenuItem>
                 );
               })
@@ -383,17 +339,16 @@ export default function TaskFormModal({
           <InputLabel sx={{ color: "#888888" }}>Assignee</InputLabel>
           <Select
             value={form.assigneeId || ""}
-            disabled={!form.projectId}
+            disabled={!form.projectId || users.length === 0}
             onChange={handleSelectChange("assigneeId")}
             label="Assignee"
             sx={selectStyle}
             MenuProps={menuProps}
-            displayEmpty
           >
-            {assignees.length > 0 ? (
-              assignees.map((u) => (
+            {users.length > 0 ? (
+              users.map((u) => (
                 <MenuItem key={u.id} value={u.id} sx={menuItemStyle}>
-                  {u.name} ({u.role})
+                  {getUserName(u.id, users)} ({u.role})
                   {Number(u.id) === Number(user.id) && " (You)"}
                 </MenuItem>
               ))
@@ -437,7 +392,7 @@ export default function TaskFormModal({
       <ConfirmationDialog
         open={showCreateConfirm}
         title="Create New Task?"
-        message={`Create task?\n\nTitle: ${form.title}\nProject: ${getProjectName()}\nAssignee: ${getAssigneeName()}\nPriority: ${form.priority}`}
+        message={`Create task?\n\nTitle: ${form.title}\nProject: ${getProjectName(form.projectId, projects)}\nAssignee: ${getUserName(form.assigneeId, users)}\nPriority: ${form.priority}`}
         onConfirm={performSubmit}
         onCancel={() => setShowCreateConfirm(false)}
         confirmText="Create Task"
@@ -448,7 +403,7 @@ export default function TaskFormModal({
       <ConfirmationDialog
         open={showUpdateConfirm}
         title="Update Task?"
-        message={`Update task?\n\nTitle: ${form.title}\nProject: ${getProjectName()}\nAssignee: ${getAssigneeName()}\nPriority: ${form.priority}`}
+        message={`Update task?\n\nTitle: ${form.title}\nProject: ${getProjectName(form.projectId, projects)}\nAssignee: ${getUserName(form.assigneeId, users)}\nPriority: ${form.priority}`}
         onConfirm={performSubmit}
         onCancel={() => setShowUpdateConfirm(false)}
         confirmText="Update Task"
