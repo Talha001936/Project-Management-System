@@ -1,7 +1,15 @@
-
+import PropTypes from 'prop-types';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
+import { memo } from 'react';
 
-export default function BaseModal({ open, onClose, title, children, actions, maxWidth = "xs" }) {
+function BaseModal({ 
+  open, 
+  onClose, 
+  title, 
+  children, 
+  actions = null, 
+  maxWidth = "xs" 
+}) {
   return (
     <Dialog
       open={open}
@@ -55,3 +63,14 @@ export default function BaseModal({ open, onClose, title, children, actions, max
     </Dialog>
   );
 }
+
+BaseModal.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  title: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired,
+  actions: PropTypes.node,
+  maxWidth: PropTypes.string,
+};
+
+export default memo(BaseModal);
