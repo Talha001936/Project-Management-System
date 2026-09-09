@@ -1,13 +1,7 @@
-//Note: This service manages JWT tokens for authentication and authorization. It provides 
-// functions to generate, verify, and decode access and refresh tokens. The service uses 
-// a secret key for signing the tokens and supports configurable expiration times for both 
-// access and refresh tokens.
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
 
-const JWT_SECRET = 'SecretAzanTalha123';
-const JWT_EXPIRY = '7d';
-const REFRESH_TOKEN_EXPIRY = '30d';
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET, JWT_ACCESS_EXPIRY, JWT_REFRESH_EXPIRY, NODE_ENV } from '../utils/constants.js';
+
 
 export const generateTokens = (user) => {
   const payload = {
@@ -16,13 +10,11 @@ export const generateTokens = (user) => {
     role: user.role
   };
 
-  // Generate access token
-  const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY });
-
+  const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_ACCESS_EXPIRY });
   const refreshToken = jwt.sign(
     { id: user.id, type: 'refresh' },
     JWT_SECRET,
-    { expiresIn: REFRESH_TOKEN_EXPIRY }
+    { expiresIn: JWT_REFRESH_EXPIRY }
   );
 
   return { accessToken, refreshToken };
@@ -39,12 +31,19 @@ export const verifyAccessToken = (token) => {
 export const verifyRefreshToken = (token) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    if (decoded.type !== 'refresh') {
-      return null;
-    }
+    if (decoded.type !== 'refresh') return null;
     return decoded;
   } catch (error) {
     return null;
   }
 };
 
+export const getCookieOptions = (maxAge = 15 * 60 * 1000) => {
+  
+  return {
+    httpOnly: true,
+    sameSite: 'strict',
+    maxAge,
+    path: '/',
+  };
+};
