@@ -1,13 +1,13 @@
-
+// routes/user.routes.js
 import express from 'express';
 import {
   getAllUsers,
-  getUsersForTeam,
   getAssignableUsers,
   createUser,
   updateUserRole,
   updateUserStatus,
-  deleteUser
+  deleteUser,
+  getuserlist
 } from '../controllers/user.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { authorize } from '../middleware/authorization.middleware.js';
@@ -17,18 +17,19 @@ import {
   updateUserRoleSchema, 
   updateUserStatusSchema 
 } from '../validations/user.validation.js';
+import { USER_ROLE } from '../utils/constants.js';
 
 const router = express.Router();
 
 router.use(authenticate);
 
-router.get('/for-team', authorize('admin', 'manager'), getUsersForTeam);
+
+router.get('/', authorize(USER_ROLE.ADMIN), getAllUsers);
+router.get('/public', getuserlist);
 router.get('/assignable', getAssignableUsers);
+router.post('/', authorize(USER_ROLE.ADMIN), validate(createUserSchema), createUser);
+router.patch('/:id/role', authorize(USER_ROLE.ADMIN), validate(updateUserRoleSchema), updateUserRole);
+router.patch('/:id/status', authorize(USER_ROLE.ADMIN), validate(updateUserStatusSchema), updateUserStatus);
+router.delete('/:id', authorize(USER_ROLE.ADMIN), deleteUser);
 
-router.get('/', authorize('admin'), getAllUsers);
-router.post('/', authorize('admin'), validate(createUserSchema), createUser);
-
-router.patch('/:id/role', authorize('admin'), validate(updateUserRoleSchema), updateUserRole);
-router.patch('/:id/status', authorize('admin'), validate(updateUserStatusSchema), updateUserStatus);
-router.delete('/:id', authorize('admin'), deleteUser);
 export default router;
