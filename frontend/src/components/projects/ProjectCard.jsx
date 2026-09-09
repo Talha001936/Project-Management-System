@@ -1,4 +1,5 @@
-// Note: This file defines a ProjectCard component that displays project information in a card format.
+// frontend/src/components/projects/ProjectCard.jsx
+import PropTypes from 'prop-types';
 import {
   Card,
   CardContent,
@@ -15,20 +16,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
 } from "@mui/icons-material";
-import { useAuth } from "../../context/AuthContext.jsx";
-import { hasValidSession, clearSession } from "../../utils/permissions.js";
-
-const getMemberName = (id, users) => {
-  if (!id) return "Unassigned";
-  const user = users?.find((u) => Number(u.id) === Number(id));
-  return user?.name || (id ? `User #${id}` : "Unassigned");
-};
-
-const getTeamName = (id, teams) => {
-  if (!id) return "No team";
-  const team = teams?.find((t) => Number(t.id) === Number(id));
-  return team?.name || (id ? `Team #${id}` : "No team");
-};
+import { getUserName, getTeamName, getProjectMembers } from "../../utils/helpers.js";
 
 export default function ProjectCard({
   project,
@@ -37,58 +25,30 @@ export default function ProjectCard({
   onViewDetails,
   onEdit,
   onDelete,
-  canManage,
+  canManage = false,
   roleBadge = "",
 }) {
-  const { user } = useAuth();
-
-  const getAllMembers = () => {
-    const members = new Set();
-    if (project.managerId) members.add(Number(project.managerId));
-    project.individualMembers?.forEach((id) => members.add(Number(id)));
-    project.teamIds?.forEach((id) => {
-      const team = teams.find((t) => Number(t.id) === Number(id));
-      team?.members?.forEach((mid) => members.add(Number(mid)));
-    });
-    return Array.from(members);
-  };
-
   const statusStyles = {
     active: { bg: "rgba(108,99,255,0.12)", color: "#6c63ff", border: "1px solid rgba(108,99,255,0.25)" },
     completed: { bg: "rgba(74,158,74,0.12)", color: "#4a9e4a", border: "1px solid rgba(74,158,74,0.25)" },
     archived: { bg: "rgba(102,102,102,0.12)", color: "#666666", border: "1px solid rgba(102,102,102,0.2)" },
   }[project.status || "active"] || statusStyles.active;
 
-  const allMembers = getAllMembers();
-
   const handleDelete = (e) => {
     e.stopPropagation();
-    if (!hasValidSession()) {
-      clearSession();
-      window.location.href = '/login';
-      return;
-    }
     if (onDelete) onDelete(project.id);
   };
 
   const handleEdit = (e) => {
     e.stopPropagation();
-    if (!hasValidSession()) {
-      clearSession();
-      window.location.href = '/login';
-      return;
-    }
     if (onEdit) onEdit();
   };
 
   const handleViewDetails = () => {
-    if (!hasValidSession()) {
-      clearSession();
-      window.location.href = '/login';
-      return;
-    }
     if (onViewDetails) onViewDetails();
   };
+
+  const allMembers = getProjectMembers(project, teams);
 
   return (
     <Card
@@ -134,13 +94,30 @@ export default function ProjectCard({
             )}
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0 }}>
-            <Chip label={project.status || "active"} size="small" sx={{ backgroundColor: statusStyles.bg, color: statusStyles.color, fontWeight: 500, border: statusStyles.border }} />
+            <Chip 
+              label={project.status || "active"} 
+              size="small" 
+              sx={{ 
+                backgroundColor: statusStyles.bg, 
+                color: statusStyles.color, 
+                fontWeight: 500, 
+                border: statusStyles.border 
+              }} 
+            />
             {canManage && (
               <>
-                <IconButton size="small" onClick={handleEdit} sx={{ color: "#888888", "&:hover": { color: "#6c63ff" } }}>
+                <IconButton 
+                  size="small" 
+                  onClick={handleEdit} 
+                  sx={{ color: "#888888", "&:hover": { color: "#6c63ff" } }}
+                >
                   <EditIcon fontSize="small" />
                 </IconButton>
-                <IconButton size="small" onClick={handleDelete} sx={{ color: "#888888", "&:hover": { color: "#d45454" } }}>
+                <IconButton 
+                  size="small" 
+                  onClick={handleDelete} 
+                  sx={{ color: "#888888", "&:hover": { color: "#d45454" } }}
+                >
                   <DeleteIcon fontSize="small" />
                 </IconButton>
               </>
@@ -148,9 +125,20 @@ export default function ProjectCard({
           </Box>
         </Box>
         <Typography variant="body2" sx={{ color: "#8888887d" }}>
-            Description
-          </Typography>
-        <Typography variant="body2" sx={{ color: "#888888", mb: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", minHeight: "40px" }}>
+          Description
+        </Typography>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            color: "#888888", 
+            mb: 2, 
+            display: "-webkit-box", 
+            WebkitLineClamp: 2, 
+            WebkitBoxOrient: "vertical", 
+            overflow: "hidden", 
+            minHeight: "40px" 
+          }}
+        >
           {project.description || "No description"}
         </Typography>
         <Divider sx={{ borderColor: "#2a2a2a", mb: 2 }} />
@@ -158,7 +146,7 @@ export default function ProjectCard({
         <Box sx={{ mb: 1.5 }}>
           <Typography variant="caption" sx={{ color: "#666666", fontWeight: 500 }}>Manager</Typography>
           <Typography variant="body2" sx={{ color: "#e8e8e8", fontWeight: 500 }}>
-            {getMemberName(project.managerId, users)}
+            {getUserName(project.managerId, users)}
           </Typography>
         </Box>
 
@@ -166,30 +154,50 @@ export default function ProjectCard({
           <Box sx={{ mb: 1.5 }}>
             <Typography variant="caption" sx={{ color: "#666666", fontWeight: 500 }}>Teams</Typography>
             <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
-              {project.teamIds.map((id) => (
-                <Chip key={id} size="small" label={getTeamName(id, teams)} sx={{ backgroundColor: "rgba(108,99,255,0.08)", color: "#6c63ff", border: "1px solid rgba(108,99,255,0.2)", fontSize: "0.7rem" }} />
-              ))}
+              {project.teamIds.map((id) => {
+                const team = teams.find(t => Number(t.id) === Number(id));
+                const teamName = team?.name || getTeamName(id, teams);
+                return (
+                  <Chip 
+                    key={id} 
+                    size="small" 
+                    label={teamName}
+                    sx={{ 
+                      backgroundColor: "rgba(108,99,255,0.08)", 
+                      color: "#6c63ff", 
+                      border: "1px solid rgba(108,99,255,0.2)", 
+                      fontSize: "0.7rem" 
+                    }} 
+                  />
+                );
+              })}
             </Stack>
           </Box>
         )}
 
         {!!allMembers.length && (
           <Box sx={{ mb: 2 }}>
-            <Typography variant="caption" sx={{ color: "#666666", fontWeight: 500 }}>Members ({allMembers.length})</Typography>
+            <Typography variant="caption" sx={{ color: "#666666", fontWeight: 500 }}>
+              Members ({allMembers.length})
+            </Typography>
             <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
-              {allMembers.map((m) => (
-                <Chip
-                  key={m}
-                  size="small"
-                  label={getMemberName(m, users)}
-                  sx={{
-                    backgroundColor: Number(m) === Number(project.managerId) ? "rgba(108,99,255,0.12)" : "transparent",
-                    color: Number(m) === Number(project.managerId) ? "#6c63ff" : "#888888",
-                    border: Number(m) === Number(project.managerId) ? "1px solid rgba(108,99,255,0.25)" : "1px solid #2a2a2a",
-                    fontSize: "0.7rem",
-                  }}
-                />
-              ))}
+              {allMembers.map((memberId) => {
+                const isManager = Number(memberId) === Number(project.managerId);
+                const memberName = getUserName(memberId, users);
+                return (
+                  <Chip
+                    key={memberId}
+                    size="small"
+                    label={memberName}
+                    sx={{
+                      backgroundColor: isManager ? "rgba(108,99,255,0.12)" : "transparent",
+                      color: isManager ? "#6c63ff" : "#888888",
+                      border: isManager ? "1px solid rgba(108,99,255,0.25)" : "1px solid #2a2a2a",
+                      fontSize: "0.7rem",
+                    }}
+                  />
+                );
+              })}
             </Stack>
           </Box>
         )}
@@ -216,3 +224,22 @@ export default function ProjectCard({
     </Card>
   );
 }
+
+ProjectCard.propTypes = {
+  project: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    managerId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    teamIds: PropTypes.array,
+    individualMembers: PropTypes.array,
+    status: PropTypes.string,
+  }).isRequired,
+  users: PropTypes.array,
+  teams: PropTypes.array,
+  onViewDetails: PropTypes.func,
+  onEdit: PropTypes.func,
+  onDelete: PropTypes.func,
+  canManage: PropTypes.bool,
+  roleBadge: PropTypes.string,
+};
