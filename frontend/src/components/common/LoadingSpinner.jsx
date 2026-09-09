@@ -1,3 +1,5 @@
+
+import PropTypes from 'prop-types';
 import { Box, CircularProgress } from "@mui/material";
 
 export default function LoadingSpinner({ size = 40, mt = 8 }) {
@@ -7,3 +9,8 @@ export default function LoadingSpinner({ size = 40, mt = 8 }) {
     </Box>
   );
 }
+
+LoadingSpinner.propTypes = {
+  size: PropTypes.number,
+  mt: PropTypes.number,
+};
