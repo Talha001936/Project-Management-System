@@ -1,36 +1,32 @@
-//Note:It checks if the user is authenticated and has the required role to access a specific route. 
-// If the user is not authenticated or does not have the required role, they are redirected 
-// to the login page or an unauthorized page.
-import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.jsx";
-import { isTokenExpired, clearSession } from "../utils/permissions.js";
-import { tokenStorage } from "../utils/tokenStorage.js";
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Box, CircularProgress } from '@mui/material';
+import { useAuth } from '../context/AuthContext.jsx';
+import { hasRole } from '../utils/permissions.js';
 
-export default function RoleRoute({ roles, redirectTo = "/unauthorized" }) {
-  const { user, loading, refreshSession } = useAuth();
+export default function RoleRoute({ roles, redirectTo = '/unauthorized' }) {
+  const { user, loading } = useAuth();
   const location = useLocation();
-  
-  const token = tokenStorage.getToken();
-  const refreshToken = tokenStorage.getRefreshToken();
 
   if (loading) {
-    return null;
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}
+      >
+        <CircularProgress sx={{ color: '#6c63ff' }} />
+      </Box>
+    );
   }
-  
-  if (!token || !refreshToken || !user) {
+
+  if (!user) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
-  if (isTokenExpired(token)) {
-    refreshSession().catch(() => {
-      clearSession();
-      return <Navigate to="/login" state={{ from: location.pathname, session: 'expired' }} replace />;
-    });
-  }
-  
-  if (!roles.includes(user.role)) {
+  const hasAccess = hasRole(user, roles);
+
+  if (!hasAccess) {
+    console.warn(`Access denied for ${user.role}. Required: ${roles.join(' or ')}`);
     return <Navigate to={redirectTo} state={{ from: location.pathname }} replace />;
   }
-  
+
   return <Outlet />;
 }
