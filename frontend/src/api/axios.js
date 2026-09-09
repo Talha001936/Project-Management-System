@@ -3,122 +3,110 @@
 // manages a queue of failed requests while a token refresh is in progress.
 import axios from 'axios';
 import { tokenStorage } from '../utils/tokenStorage.js';
-import { isTokenExpired } from '../utils/permissions.js';
+import { sessionManager } from '../utils/sessionManager.js';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8436/api';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8436/api',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
+    Accept: 'application/json',
   },
   timeout: 10000,
+  withCredentials: true,
 });
 
 let isRefreshing = false;
-let failedQueue = [];
+let refreshSubscribers = [];
 
-const processQueue = (error, token = null, refreshToken = null) => {
-  failedQueue.forEach(prom => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve({ token, refreshToken });
-    }
-  });
-  failedQueue = [];
+const onRefreshed = token => {
+  refreshSubscribers.forEach(callback => callback(token));
+  refreshSubscribers = [];
+};
+
+const addRefreshSubscriber = callback => {
+  refreshSubscribers.push(callback);
 };
 
 api.interceptors.request.use(
-  (config) => {
-    const token = tokenStorage.getToken();
-    
-    const publicRoutes = ['/auth/login', '/auth/register', '/health'];
-    if (publicRoutes.some(route => config.url.includes(route))) {
-      return config;
-    }
-
-    if (token) {
-      if (isTokenExpired(token)) {
-        tokenStorage.clear();
-        return Promise.reject({
-          response: {
-            status: 401,
-            data: { message: 'Token expired' }
-          }
-        });
-      }
-      config.headers.Authorization = `Bearer ${token}`;
+  config => {
+    const skipRefreshEndpoints = [
+      '/auth/login',
+      '/auth/register',
+      '/auth/refresh-token',
+      '/auth/me',
+      '/health',
+    ];
+    if (skipRefreshEndpoints.some(route => config.url?.includes(route))) {
+      config._skipRefresh = true;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  error => Promise.reject(error)
 );
 
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+  response => response,
+  async error => {
     const originalRequest = error.config;
-    
-    if (error.response?.status !== 401 || 
-        originalRequest._retry || 
-        originalRequest.url?.includes('/auth/refresh-token')) {
+
+    if (originalRequest._retry || originalRequest._skipRefresh) {
       return Promise.reject(error);
     }
 
-    const refreshToken = tokenStorage.getRefreshToken();
-    const token = tokenStorage.getToken();
-    
-    if (!refreshToken || !token) {
-      tokenStorage.clear();
+    const authEndpoints = ['/auth/login', '/auth/register', '/auth/refresh-token'];
+    if (authEndpoints.some(endpoint => originalRequest.url?.includes(endpoint))) {
       return Promise.reject(error);
     }
 
-    originalRequest._retry = true;
+    if (error.response?.status === 401) {
+      originalRequest._retry = true;
 
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      })
-        .then(({ token: newToken }) => {
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+      if (isRefreshing) {
+        return new Promise(resolve => {
+          addRefreshSubscriber(token => {
+            originalRequest.headers['Authorization'] = `Bearer ${token}`;
+            resolve(api(originalRequest));
+          });
+        });
+      }
+
+      isRefreshing = true;
+
+      try {
+        const response = await api.post(
+          '/auth/refresh-token',
+          {},
+          {
+            _skipRefresh: true,
+            withCredentials: true,
+          }
+        );
+
+        if (response.data?.success) {
+          isRefreshing = false;
+          onRefreshed(null);
+          originalRequest._skipRefresh = true;
           return api(originalRequest);
-        })
-        .catch(err => Promise.reject(err));
-    }
-
-    isRefreshing = true;
-
-    try {
-      const refreshResponse = await api.post('/auth/refresh-token', {
-        refreshToken: refreshToken
-      });
-
-      const newToken = refreshResponse.data.token;
-      const newRefreshToken = refreshResponse.data.refreshToken;
-      
-      if (newToken) {
-        tokenStorage.setToken(newToken);
-        if (newRefreshToken) {
-          tokenStorage.setRefreshToken(newRefreshToken);
+        } else {
+          throw new Error('Refresh failed');
         }
-        api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-        processQueue(null, newToken, newRefreshToken);
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        return api(originalRequest);
+      } catch (refreshError) {
+        isRefreshing = false;
+        refreshSubscribers = [];
+
+        if (tokenStorage.getUser()) {
+          sessionManager.clearSession(false);
+          if (!window.location.pathname.includes('/login')) {
+            window.location.replace('/login?session=expired');
+          }
+        }
+        return Promise.reject(refreshError);
       }
-      
-      throw new Error('No token in refresh response');
-    } catch (refreshError) {
-      tokenStorage.clear();
-      processQueue(refreshError, null);
-      
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login?session=expired';
-      }
-      
-      return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
     }
+
+    return Promise.reject(error);
   }
 );
 
