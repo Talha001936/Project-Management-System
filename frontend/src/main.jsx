@@ -1,3 +1,4 @@
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { ThemeProvider, CssBaseline } from "@mui/material";
@@ -8,10 +9,28 @@ import { AuthProvider, setGlobalClearCache } from "./context/AuthContext.jsx";
 import App from "./App.jsx";
 import "./index.css";
 import { clearAllCache } from "./hooks/useLoadData.js";
+import { sessionManager } from "./utils/sessionManager.js";
 
-clearAllCache();
+const clearOldStorage = () => {
+  try {
+    const needsClear = localStorage.getItem('pms_migrated') !== 'true';
+    if (needsClear) {
+      localStorage.clear();
+      localStorage.setItem('pms_migrated', 'true');
+    }
+  } catch (e) {
+    
+  }
+};
 
+clearOldStorage();
+sessionManager.initializeStorageCleanup();
+sessionManager.registerCallback(() => {
+  clearAllCache();
+});
 setGlobalClearCache(clearAllCache);
+window.clearAllCache = clearAllCache;
+
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
