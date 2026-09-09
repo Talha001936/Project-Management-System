@@ -1,99 +1,71 @@
-// Note: User controller with role-based access and user management
-import { 
-  getDatabase, 
-  saveDatabase, 
-  findUserById, 
+//Note : this controller is used for crud operaion for users and get acces to user data.
+import {
+  getDatabase,
+  saveDatabase,
+  findUserById,
   generateId,
-  hashPassword 
+  hashPassword,
+  getAccessibleUserIds
 } from '../services/db.service.js';
+import { USER_ROLE } from '../utils/constants.js';
+import { successResponse, errorResponse } from '../utils/response.js';
 
-// Get all users (Admin only) - SHOW ALL USERS including inactive
 export const getAllUsers = async (req, res) => {
   try {
     const db = getDatabase();
-    // Return ALL users without filtering by active status
-    const users = db.users.map(({ password, ...user }) => user);
-    res.json(users);
-  } catch (error) {
-    console.error('Get users error:', error);
-    res.status(500).json({ message: 'Failed to get users' });
-  }
-};
+    const { role } = req.user;
 
-// Get users for team assignment (Admin and Manager) for only active users
-export const getUsersForTeam = async (req, res) => {
-  try {
-    const db = getDatabase();
-    const users = db.users
-      .filter(u => u.active !== false)  
-      .map(({ password, ...user }) => user);
-    res.json(users);
-  } catch (error) {
-    console.error('Get users error:', error);
-    res.status(500).json({ message: 'Failed to get users' });
-  }
-};
-
-// Get assignable users based on role for only active users
-export const getAssignableUsers = async (req, res) => {
-  try {
-    const db = getDatabase();
-    const { id: userId, role } = req.user;
-
-    let users = db.users.filter(u => u.active !== false);  
-
-    if (role === 'employee') {
-      users = users.filter(u => u.id === userId);
-    } else if (role === 'manager') {
-      const projectIds = db.projects
-        .filter(p => p.managerId === userId)
-        .map(p => p.id);
-      
-      const teamIds = new Set();
-      db.projects
-        .filter(p => projectIds.includes(p.id))
-        .forEach(p => p.teamIds?.forEach(id => teamIds.add(id)));
-      
-      const memberIds = new Set([userId]);
-      db.teams
-        .filter(t => teamIds.has(t.id))
-        .forEach(t => t.members?.forEach(id => memberIds.add(id)));
-      
-      db.projects
-        .filter(p => projectIds.includes(p.id))
-        .forEach(p => p.individualMembers?.forEach(id => memberIds.add(id)));
-
-      users = users.filter(u => memberIds.has(u.id));
+    if (role !== USER_ROLE.ADMIN) {
+      return errorResponse(res, 'only admin can view all users', 403);
     }
 
-    users = users.map(({ password, ...user }) => user);
-    res.json(users);
+    let users = db.users;
+
+    if (req.query.role) {
+      users = users.filter(u => u.role === req.query.role);
+    }
+
+    if (req.query.active !== undefined) {
+      const isActive = req.query.active === 'true';
+      users = users.filter(u => u.active === isActive);
+    }
+
+    const usersWP = users.map(user => {
+      const userData = { ...user };
+      delete userData.password;
+      return userData;
+    });
+
+    return successResponse(res, 'Users fetched successfully', usersWP);
   } catch (error) {
-    console.error('Get assignable users error:', error);
-    res.status(500).json({ message: 'Failed to get assignable users' });
+    console.error('get users error:', error);
+    return errorResponse(res, 'Failed to get users', 500);
   }
 };
 
-// Create user for admin only
 export const createUser = async (req, res) => {
   try {
-    const { name, email, password, role = 'employee' } = req.body;
+    const { name, email, password, role = USER_ROLE.EMPLOYEE, active = true } = req.body;
 
     const db = getDatabase();
-    
-    if (db.users.some(u => u.email === email)) {
-      return res.status(400).json({ message: 'Email already registered' });
+
+    if (db.users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+      return errorResponse(res, 'Email already registered', 400);
+    }
+
+    if (role === USER_ROLE.ADMIN) {
+      return errorResponse(res, 'Cannot create admin accounts.', 400);
     }
 
     const hashedPassword = await hashPassword(password);
-    
+
     const newUser = {
       id: generateId(),
-      name,
-      email,
+      name: name.trim(),
+      email: email.toLowerCase(),
       password: hashedPassword,
-      role,
-      active: true,
+      role: role || USER_ROLE.EMPLOYEE,
+      active,
       createdAt: new Date().toISOString(),
       lastLogin: null
     };
@@ -101,110 +73,211 @@ export const createUser = async (req, res) => {
     db.users.push(newUser);
     await saveDatabase();
 
-    const { password: _, ...userData } = newUser;
-    res.status(201).json(userData);
+    const userData = { ...newUser };
+    delete userData.password;
+    return successResponse(res, 'User created successfully', userData);
   } catch (error) {
-    console.error('Create user error:', error);
-    res.status(500).json({ message: 'Failed to create user' });
+    console.error('create user error:', error);
+    return errorResponse(res, 'Failed to create user', 500);
   }
 };
 
-
-// Delete user for admin only
-export const deleteUser = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { role } = req.user;
-
-    const user = findUserById(Number(id));
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    if (user.role === 'admin') {
-      return res.status(400).json({ message: 'Cannot delete admin users' });
-    }
-    if (role !== 'admin') {
-      return res.status(403).json({ message: 'Only admins can delete users' });
-    }
-
-    const db = getDatabase();
-
-    db.users = db.users.filter(u => u.id !== Number(id));
-    
-    db.teams = db.teams.map(team => ({
-      ...team,
-      members: team.members?.filter(memberId => memberId !== Number(id)) || []
-    }));
-    
-    db.projects = db.projects.map(project => ({
-      ...project,
-      individualMembers: project.individualMembers?.filter(memberId => memberId !== Number(id)) || []
-    }));
-    
-    db.tasks = db.tasks.map(task => ({
-      ...task,
-      assigneeId: task.assigneeId === Number(id) ? null : task.assigneeId,
-      createdBy: task.createdBy === Number(id) ? null : task.createdBy
-    }));
-
-    await saveDatabase();
-
-    res.json({ message: 'User deleted successfully' });
-  } catch (error) {
-    console.error('Delete user error:', error);
-    res.status(500).json({ message: 'Failed to delete user' });
-  }
-};
-
-// Update user role for admin only
 export const updateUserRole = async (req, res) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
 
-    const user = findUserById(Number(id));
+    const user = findUserById(parseInt(id));
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return errorResponse(res, 'User not found', 404);
     }
 
-    if (user.role === 'admin') {
-      return res.status(400).json({ message: 'Cannot change admin role' });
+    if (user.role === USER_ROLE.ADMIN) {
+      return errorResponse(res, 'Cannot change admin role', 400);
     }
 
+    if (role === USER_ROLE.ADMIN) {
+      return errorResponse(res, 'Cannot assign admin role', 400);
+    }
+
+    if (![USER_ROLE.MANAGER, USER_ROLE.EMPLOYEE].includes(role)) {
+      return errorResponse(res, 'Invalid role', 400);
+    }
+
+    const oldRole = user.role;
     user.role = role;
     await saveDatabase();
 
-    const { password, ...userData } = user;
-    res.json(userData);
+    const userData = { ...user };
+    delete userData.password;
+    return successResponse(res, `Role changed from ${oldRole} to ${role}`, userData);
   } catch (error) {
-    console.error('Update role error:', error);
-    res.status(500).json({ message: 'Failed to update user role' });
+    console.error('update role error:', error);
+    return errorResponse(res, 'Failed to update user role', 500);
   }
 };
 
-// Update user status for admin only
 export const updateUserStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { active } = req.body;
 
-    const user = findUserById(Number(id));
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    if (active === undefined) {
+      return errorResponse(res, 'Active status is required', 400);
     }
 
-    if (user.role === 'admin') {
-      return res.status(400).json({ message: 'Cannot change admin status' });
+    const user = findUserById(parseInt(id));
+    if (!user) {
+      return errorResponse(res, 'User not found', 404);
+    }
+
+    if (user.role === USER_ROLE.ADMIN) {
+      return errorResponse(res, 'Cannot change admin status', 400);
     }
 
     user.active = active;
     await saveDatabase();
 
-    const { password, ...userData } = user;
-    res.json(userData);
+    const userData = { ...user };
+    delete userData.password;
+    return successResponse(res, active ? 'User activated successfully' : 'User deactivated successfully', userData);
   } catch (error) {
-    console.error('Update status error:', error);
-    res.status(500).json({ message: 'Failed to update user status' });
+    console.error('update status error:', error);
+    return errorResponse(res, 'Failed to update user status', 500);
   }
 };
+
+export const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = findUserById(parseInt(id));
+    if (!user) {
+      return errorResponse(res, 'User not found', 404);
+    }
+
+    if (user.role === USER_ROLE.ADMIN) {
+      return errorResponse(res, 'Cannot delete admin accounts', 400);
+    }
+
+    const db = getDatabase();
+
+    const activeTasks = db.tasks.filter(t =>
+      t.assigneeId === user.id &&
+      t.status !== 'done'
+    );
+
+    if (activeTasks.length > 0) {
+      return errorResponse(res, `Cannot delete user with ${activeTasks.length} active tasks. Reassign or complete tasks first.`, 400);
+    }
+
+    db.users = db.users.filter(u => u.id !== user.id);
+
+    db.teams = db.teams.map(team => ({
+      ...team,
+      members: team.members?.filter(memberId => memberId !== user.id) || []
+    }));
+
+    db.projects = db.projects.map(project => ({
+      ...project,
+      individualMembers: project.individualMembers?.filter(memberId => memberId !== user.id) || []
+    }));
+
+    db.tasks = db.tasks.map(task => ({
+      ...task,
+      assigneeId: task.assigneeId === user.id ? null : task.assigneeId,
+      createdBy: task.createdBy === user.id ? null : task.createdBy
+    }));
+
+    await saveDatabase();
+
+    return successResponse(res, `User ${user.name} deleted successfully`, { userId: user.id });
+  } catch (error) {
+    console.error('delete user error:', error);
+    return errorResponse(res, 'Failed to delete user', 500);
+  }
+};
+
+export const getAssignableUsers = async (req, res) => {
+  try {
+    const { role, id: userId } = req.user;
+    const db = getDatabase();
+
+    let users = db.users.filter(u => u.active !== false);
+
+    if (role === USER_ROLE.ADMIN) {
+      users = users.filter(u => u.role !== USER_ROLE.ADMIN);
+    } else if (role === USER_ROLE.MANAGER) {
+      const accessibleIds = getAccessibleUserIds(userId);
+      users = users.filter(u => accessibleIds.has(u.id) && u.role !== USER_ROLE.ADMIN);
+    } else if (role === USER_ROLE.EMPLOYEE) {
+      
+      users = users.filter(u => u.id === userId);
+    }
+
+    const usersWP = users.map(user => {
+      const userData = { ...user };
+      delete userData.password;
+      return userData;
+    });
+
+    return successResponse(res, 'Assignable users fetched successfully', usersWP);
+  } catch (error) {
+    console.error('get assignable users error:', error);
+    return errorResponse(res, 'Failed to get assignable users', 500);
+  }
+};
+ 
+export const getuserlist=async (req, res) => {
+  try {
+    const db = getDatabase();
+    const { role, id: userId } = req.user;
+
+    let users = db.users.filter(u => u.active !== false);
+
+    
+    if (role !== USER_ROLE.ADMIN) {
+      
+      const userProjects = db.projects.filter(p => 
+        p.individualMembers?.includes(userId) ||
+        p.teamIds?.some(teamId => {
+          const team = db.teams.find(t => t.id === teamId);
+          return team?.members?.includes(userId);
+        })
+      );
+
+      const projectUserIds = new Set();
+      userProjects.forEach(project => {
+        if (project.managerId) projectUserIds.add(project.managerId);
+        project.individualMembers?.forEach(id => projectUserIds.add(id));
+        project.teamIds?.forEach(teamId => {
+          const team = db.teams.find(t => t.id === teamId);
+          team?.members?.forEach(id => projectUserIds.add(id));
+        });
+      });
+
+      
+      projectUserIds.add(userId);
+
+      
+      db.users.forEach(u => {
+        if (u.role === USER_ROLE.ADMIN && u.active !== false) {
+          projectUserIds.add(u.id);
+        }
+      });
+
+      users = users.filter(u => projectUserIds.has(u.id));
+    }
+   
+    const usersWP = users.map(user => {
+      const userData = { ...user };
+      delete userData.password;
+      return userData;
+    });
+
+    return successResponse(res, 'Users fetched successfully', usersWP);
+  } catch (error) {
+    console.error('get public users error:', error);
+    return errorResponse(res, 'Failed to get users', 500);
+  }
+}
