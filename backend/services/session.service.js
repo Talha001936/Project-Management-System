@@ -1,27 +1,20 @@
-//Note : This service manages user sessions in the application. It provides functions to create,
-//  find, update, and invalidate sessions. Sessions are stored in a JSON file that acts as a simple d
-// atabase. The service also includes a cleanup function to remove expired sessions.
-import { getDatabase, saveDatabase } from './db.service.js';
+// note this service i used to crate and cleanup sessions
+import { getDatabase, saveDatabase, generateId } from './db.service.js';
+import { tokenBlacklist } from './blacklist.service.js';
 
-export const createSession = (userId, token, refreshToken) => {
+export const createSession = (userId, accessToken, refreshToken) => {
   const db = getDatabase();
   
-  if (!db.sessions) {
-    db.sessions = [];
-  }
+  if (!db.sessions) db.sessions = [];
 
-  // Remove existing sessions for this user
-  db.sessions = db.sessions.filter(s => s.userId !== userId);
-
-  // Create new session
   const session = {
-    id: Date.now() + Math.floor(Math.random() * 1000),
+    id: generateId(),
     userId,
-    token,
+    accessToken,
     refreshToken,
     createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-    lastActivity: new Date().toISOString()
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), 
+    isActive: true
   };
 
   db.sessions.push(session);
@@ -30,40 +23,31 @@ export const createSession = (userId, token, refreshToken) => {
   return session;
 };
 
-export const findSessionByRefreshToken = (refreshToken) => {
-  const db = getDatabase();
-  if (!db.sessions) return null;
-  
-  return db.sessions.find(s => s.refreshToken === refreshToken);
-};
-
-export const updateSessionActivity = (refreshToken) => {
-  const db = getDatabase();
-  if (!db.sessions) return null;
-  
-  const session = db.sessions.find(s => s.refreshToken === refreshToken);
-  if (session) {
-    session.lastActivity = new Date().toISOString();
-    saveDatabase();
-    return session;
-  }
-  return null;
-};
-
-export const invalidateSession = (userId) => {
+export const invalidateAllUserSessions = (userId) => {
   const db = getDatabase();
   if (!db.sessions) return;
+  
+  const userSessions = db.sessions.filter(s => s.userId === userId);
+  
+  userSessions.forEach(session => {
+    if (session.accessToken) tokenBlacklist.add(session.accessToken);
+    if (session.refreshToken) tokenBlacklist.add(session.refreshToken);
+  });
   
   db.sessions = db.sessions.filter(s => s.userId !== userId);
   saveDatabase();
 };
 
-export const invalidateRefreshToken = (refreshToken) => {
+export const invalidateSessionByToken = (accessToken) => {
   const db = getDatabase();
   if (!db.sessions) return;
   
-  db.sessions = db.sessions.filter(s => s.refreshToken !== refreshToken);
-  saveDatabase();
+  const session = db.sessions.find(s => s.accessToken === accessToken);
+  if (session) {
+    if (session.refreshToken) tokenBlacklist.add(session.refreshToken);
+    db.sessions = db.sessions.filter(s => s.accessToken !== accessToken);
+    saveDatabase();
+  }
 };
 
 export const cleanupExpiredSessions = () => {
@@ -71,6 +55,20 @@ export const cleanupExpiredSessions = () => {
   if (!db.sessions) return;
   
   const now = new Date();
+  const expiredSessions = db.sessions.filter(s => new Date(s.expiresAt) <= now);
+  
+  expiredSessions.forEach(session => {
+    if (session.accessToken) tokenBlacklist.add(session.accessToken);
+    if (session.refreshToken) tokenBlacklist.add(session.refreshToken);
+  });
+  
   db.sessions = db.sessions.filter(s => new Date(s.expiresAt) > now);
-  saveDatabase();
+  if (expiredSessions.length > 0) saveDatabase();
+};
+
+export const getActiveSessions = (userId) => {
+  const db = getDatabase();
+  if (!db.sessions) return [];
+  
+  return db.sessions.filter(s => s.userId === userId && s.isActive === true);
 };
