@@ -1,43 +1,56 @@
-# Project Management System
-A complete project management application built with React that manages users, teams, projects, and tasks with role-based access control.
+# Project Management System (PMS)
 
-# Default Login Credentials
-Role	    Email	            Password
-Admin	    admin@pms.com	    admin123
-
-Manager	    manager@pms.com	    manager123
-
-Employee	employee@pms.com	employee123
+A full-stack project management application with role-based access control, built with React + Vite (frontend) and Node.js + Express (backend).
 
 
-# Core Features
-Role-Based Access
-Admin: Full control (users, projects, tasks, teams)
+## Default Login Credentials
 
-Manager: Manage own projects/tasks, view teams
-
-Employee: View assigned tasks/projects, update task status
-
-# Key Operations
-Projects: Create, edit, delete, assign teams/members
-
-Tasks: Create, assign, update status (To Do → In Progress → Review → Done)
-
-Teams: Create, manage members, assign leaders (Admin only)
-
-Users: Create, delete, change roles, activate/deactivate (Admin only)
-
-# Auth:    /api/auth/login, /register, /logout, /refresh-token
-
-# Users:   /api/users (CRUD - Admin only)
-
-# Projects:/api/projects (CRUD - Admin/Manager)
-
-# Tasks:   /api/tasks (CRUD + status update)
-
-# Teams:   /api/teams (CRUD - Admin only)
+| Role | Email | Password |
+|------|-------|----------|
+| **Admin** | `admin@pms.com` | `admin123` |
+| **Manager** | `manager@pms.com` | `manager123` |
+| **Employee** | `employee@pms.com` | `employee123` |
 
 
+##  Core Features
+
+### 🔐 Authentication
+- JWT-based authentication with refresh tokens
+- HTTP-only cookies for secure token storage
+- Automatic token refresh
+- Session management
+
+### User Management (Admin Only)
+- Create, update, delete users
+- Change user roles (Manager/Employee)
+- Activate/deactivate user accounts
+
+### Project Management
+- Create, edit, delete projects
+- Assign project managers
+- Add team members and individual members
+- Track project status (Active, Completed, Archived)
+
+### Task Management
+- Create, edit, delete tasks
+- Assign tasks to users
+- Update task status (To Do → In Progress → Review → Done)
+- Task priority levels (Low, Medium, High, Critical)
+
+### Team Management (Admin Only)
+- Create, edit, delete teams
+- Assign team leaders
+- Add/remove team members
+
+### Dashboard
+- Role-specific dashboards with key metrics
+- Task statistics and project overview
 
 
 
+
+---
+
+## 🌐 API Endpoints
+
+### Authentication
