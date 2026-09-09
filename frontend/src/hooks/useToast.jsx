@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 export const useToast = () => {
   return {
     showSuccess: (message, title = 'Success') => {
+      if (!message) return;
       return toast.success(title ? `${title}: ${message}` : message, {
         duration: 4000,
         position: 'bottom-right',
@@ -25,6 +26,21 @@ export const useToast = () => {
     },
 
     showError: (message, title = 'Error') => {
+      if (!message) return;
+
+      // Don't show toast for 401/403 errors (handled by interceptor)
+      if (typeof message === 'string') {
+        if (
+          message.includes('401') ||
+          message.includes('Unauthorized') ||
+          message.includes('403') ||
+          message.includes('Forbidden') ||
+          message.includes('Access denied')
+        ) {
+          return;
+        }
+      }
+
       return toast.error(title ? `${title}: ${message}` : message, {
         duration: 5000,
         position: 'bottom-right',
@@ -43,62 +59,71 @@ export const useToast = () => {
     },
 
     showWarning: (message, title = 'Warning') => {
-      return toast.custom((t) => (
-        <div
-          style={{
-            background: '#1a1a1a',
-            color: '#f0a030',
-            border: '1px solid rgba(240,160,48,0.3)',
-            borderRadius: '12px',
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-            minWidth: '320px',
-          }}
-        >
-          <span style={{ fontSize: '24px' }}>⚠️</span>
-          <div>
-            <div style={{ fontWeight: 600, color: '#e8e8e8' }}>{title}</div>
-            <div style={{ color: '#b0b0b0' }}>{message}</div>
+      if (!message) return;
+      return toast.custom(
+        _t => (
+          <div
+            style={{
+              background: '#1a1a1a',
+              color: '#f0a030',
+              border: '1px solid rgba(240,160,48,0.3)',
+              borderRadius: '12px',
+              padding: '16px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              minWidth: '320px',
+            }}
+          >
+            <span style={{ fontSize: '24px' }}>⚠️</span>
+            <div>
+              <div style={{ fontWeight: 600, color: '#e8e8e8' }}>{title}</div>
+              <div style={{ color: '#b0b0b0' }}>{message}</div>
+            </div>
           </div>
-        </div>
-      ), {
-        duration: 4000,
-        position: 'bottom-right',
-      });
+        ),
+        {
+          duration: 4000,
+          position: 'bottom-right',
+        }
+      );
     },
 
     showInfo: (message, title = 'Info') => {
-      return toast.custom((t) => (
-        <div
-          style={{
-            background: '#1a1a1a',
-            color: '#6c63ff',
-            border: '1px solid rgba(108,99,255,0.3)',
-            borderRadius: '12px',
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-            minWidth: '320px',
-          }}
-        >
-          <span style={{ fontSize: '24px' }}>ℹ️</span>
-          <div>
-            <div style={{ fontWeight: 600, color: '#e8e8e8' }}>{title}</div>
-            <div style={{ color: '#b0b0b0' }}>{message}</div>
+      if (!message) return;
+      return toast.custom(
+        _t => (
+          <div
+            style={{
+              background: '#1a1a1a',
+              color: '#6c63ff',
+              border: '1px solid rgba(108,99,255,0.3)',
+              borderRadius: '12px',
+              padding: '16px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              minWidth: '320px',
+            }}
+          >
+            <span style={{ fontSize: '24px' }}>ℹ️</span>
+            <div>
+              <div style={{ fontWeight: 600, color: '#e8e8e8' }}>{title}</div>
+              <div style={{ color: '#b0b0b0' }}>{message}</div>
+            </div>
           </div>
-        </div>
-      ), {
-        duration: 3000,
-        position: 'bottom-right',
-      });
+        ),
+        {
+          duration: 3000,
+          position: 'bottom-right',
+        }
+      );
     },
 
-    showLoading: (message) => {
+    showLoading: message => {
+      if (!message) return;
       return toast.loading(message, {
         duration: 30000,
         position: 'bottom-right',
@@ -112,8 +137,10 @@ export const useToast = () => {
       });
     },
 
-    dismiss: (toastId) => {
-      toast.dismiss(toastId);
+    dismiss: toastId => {
+      if (toastId) {
+        toast.dismiss(toastId);
+      }
     },
   };
 };
