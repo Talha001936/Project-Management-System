@@ -1,7 +1,13 @@
+
+import PropTypes from 'prop-types';
 import { TextField, InputAdornment } from "@mui/material";
 import { Search as SearchIcon } from "@mui/icons-material";
 
-export default function SearchBar({ value, onChange, placeholder = "Search..." }) {
+export default function SearchBar({ 
+  value, 
+  onChange, 
+  placeholder = "Search..." 
+}) {
   return (
     <TextField
       size="small"
@@ -19,3 +25,9 @@ export default function SearchBar({ value, onChange, placeholder = "Search..." }
     />
   );
 }
+
+SearchBar.propTypes = {
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+  placeholder: PropTypes.string,
+};
