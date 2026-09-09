@@ -1,4 +1,4 @@
-// Note: This middleware is used to validate incoming request data against a defined schema.
+import { errorResponse } from '../utils/response.js';
 export const validate = (schema) => {
   return (req, res, next) => {
     const { error, value } = schema.validate(req.body, {
@@ -12,13 +12,11 @@ export const validate = (schema) => {
         message: detail.message
       }));
 
-      return res.status(400).json({
-        message: 'Validation error',
-        errors
-      });
+      return errorResponse(res, `Validation error: ${errors.map(e => e.message).join(', ')}`, 400);
     }
 
     req.body = value;
     next();
   };
 };
+export const validationMiddleware = validate;
