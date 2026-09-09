@@ -1,190 +1,147 @@
 // Note: This file is responsible for managing the authentication state of the application. 
-// It provides context for user authentication, including login, logout, registration, and 
-// session management. It also handles token validation and refreshing, as well as clearing 
-// cached data on logout or session expiry.
-import { createContext, useContext, useEffect, useState } from "react";
-import api from "../api/axios.js";
-import { tokenStorage } from "../utils/tokenStorage.js";
-import { isTokenExpired } from "../utils/permissions.js";
-import { useToast } from "../hooks/useToast.jsx";
-
-
-let globalClearCache = null;
-
-export const setGlobalClearCache = (fn) => {
-  globalClearCache = fn;
-};
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import PropTypes from 'prop-types';
+import { useNavigate } from 'react-router-dom';
+import api from '../api/axios.js';
+import { tokenStorage } from '../utils/tokenStorage.js';
+import { sessionManager } from '../utils/sessionManager.js';
+import { useToast } from '../hooks/useToast.jsx';
 
 const AuthContext = createContext(null);
-export const useAuth = () => useContext(AuthContext);
+
+export const setGlobalClearCache = fn => {
+  if (typeof window !== 'undefined') {
+    window.__clearCache = fn;
+  }
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+const isPublicPath = () => {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname;
+  return path === '/login' || path === '/register' || path === '/unauthorized';
+};
 
 export function AuthProvider({ children }) {
-  const { showSuccess, showError, showInfo } = useToast();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [authChecked, setAuthChecked] = useState(false);
+  const authCheckedRef = useRef(false);
+  const { showSuccess } = useToast();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const validate = async () => {
-      const token = tokenStorage.getToken();
-      const refreshToken = tokenStorage.getRefreshToken();
-      
-      if (!token || !refreshToken) { 
-        tokenStorage.clear();
-        setLoading(false); 
-        setAuthChecked(true); 
-        return; 
-      }
-
-      if (isTokenExpired(token)) {
-        try {
-          const response = await api.post('/auth/refresh-token', {
-            refreshToken: refreshToken
-          });
-          
-          if (response.data.token) {
-            tokenStorage.setToken(response.data.token);
-            if (response.data.refreshToken) {
-              tokenStorage.setRefreshToken(response.data.refreshToken);
-            }
-          } else {
-            tokenStorage.clear();
-            setLoading(false);
-            setAuthChecked(true);
-            return;
-          }
-        } catch (error) {
-          tokenStorage.clear();
-          setLoading(false);
-          setAuthChecked(true);
-          return;
-        }
-      }
-
-      try {
-        const response = await api.get("/auth/me");
-        if (response?.data?.user) {
-          setUser(response.data.user);
-        } else {
-          tokenStorage.clear();
-          setUser(null);
-        }
-      } catch (error) {
-        tokenStorage.clear();
-        setUser(null);
-      }
-      
-      setLoading(false);
-      setAuthChecked(true);
-    };
-    
-    validate();
-  }, []);
-
-  const login = async (email, password, rememberMe = false) => {
-    try {
-      const response = await api.post("/auth/login", { email, password });
-      
-      if (response?.data?.token && response?.data?.user) {
-        tokenStorage.setSession(
-          response.data.token, 
-          response.data.refreshToken, 
-          response.data.user, 
-          rememberMe
-        );
-        setUser(response.data.user);
-        showSuccess(`Welcome back, ${response.data.user.name}!`, 'Success');
-        return response.data;
-      }
-      throw new Error('Invalid login response');
-    } catch (error) {
-      showError(error.response?.data?.message || 'Login failed. Please try again.', 'Login Failed');
-      throw error;
+  const verifyUser = useCallback(async () => {
+    if (isPublicPath() || sessionManager._isLoggingOut) {
+      return false;
     }
-  };
 
-  const register = async (name, email, password) => {
     try {
-      const response = await api.post("/auth/register", { name, email, password });
-      showSuccess('Registration successful! Please login.', 'Success');
-      return response.data;
-    } catch (error) {
-      showError(error.response?.data?.message || 'Registration failed. Please try again.', 'Registration Failed');
-      throw error;
-    }
-  };
-
-  const logout = async () => {
-    try {
-      const token = tokenStorage.getToken();
-      const refreshToken = tokenStorage.getRefreshToken();
-      
-      if (token) {
-        await api.post("/auth/logout", { 
-          refreshToken: refreshToken 
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
-      
-      // Note: Clear all cached data on logout
-      if (globalClearCache) {
-        globalClearCache();
-      }
-      
-      showSuccess('Logged out successfully', 'Success');
-    } catch (error) {
-      
-      showInfo('Session cleared', 'Info');
-    } finally {
-      tokenStorage.clear();
-      setUser(null);
-    }
-  };
-
-  const refreshSession = async () => {
-    try {
-      const refreshToken = tokenStorage.getRefreshToken();
-      if (!refreshToken) {
-        throw new Error('No refresh token');
-      }
-
-      const response = await api.post('/auth/refresh-token', {
-        refreshToken: refreshToken
+      const response = await api.get('/auth/me', {
+        _skipRefresh: true,
+        timeout: 5000,
       });
 
-      if (response.data.token) {
-        tokenStorage.setToken(response.data.token);
-        if (response.data.refreshToken) {
-          tokenStorage.setRefreshToken(response.data.refreshToken);
-        }
-        return response.data;
+      if (response.data?.success && response.data?.data) {
+        const userData = response.data.data;
+        tokenStorage.setUser(userData);
+        setUser(userData);
+        return true;
       }
-      throw new Error('Failed to refresh token');
+      return false;
     } catch (error) {
-      tokenStorage.clear();
-      setUser(null);
-      // Note : Clear cache on session expiry
-      if (globalClearCache) {
-        globalClearCache();
+      if (error.response?.status === 401 && !sessionManager._isLoggingOut) {
+        sessionManager.clearSession(false);
+        setUser(null);
+        return false;
       }
-      showError('Session expired. Please login again.', 'Session Expired');
+      const storedUser = tokenStorage.getUser();
+      if (storedUser && !sessionManager._isLoggingOut) {
+        setUser(storedUser);
+        return true;
+      }
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authCheckedRef.current || isPublicPath() || sessionManager._isLoggingOut) {
+      setLoading(false);
+      return;
+    }
+
+    const checkAuth = async () => {
+      try {
+        const storedUser = tokenStorage.getUser();
+        if (storedUser) {
+          setUser(storedUser);
+        }
+
+        await verifyUser();
+      } catch (error) {
+        const storedUser = tokenStorage.getUser();
+        if (!storedUser || sessionManager._isLoggingOut) {
+          setUser(null);
+        }
+      } finally {
+        setLoading(false);
+        authCheckedRef.current = true;
+      }
+    };
+
+    checkAuth();
+  }, [verifyUser]);
+
+  const login = useCallback(async (email, password) => {
+    try {
+      const response = await api.post('/auth/login', { email, password });
+
+      if (response.data?.success && response.data?.data) {
+        const userData = response.data.data.user;
+        tokenStorage.setUser(userData);
+        setUser(userData);
+        return { user: userData };
+      }
+      throw new Error(response.data?.message || 'Invalid login response');
+    } catch (error) {
       throw error;
     }
+  }, []);
+
+  const register = useCallback(async (name, email, password) => {
+    try {
+      const response = await api.post('/auth/register', { name, email, password });
+      if (response.data.success) {
+        return response.data;
+      }
+      throw new Error(response.data.message || 'Registration failed');
+    } catch (error) {
+      throw error;
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    await sessionManager.logout(api, showSuccess, navigate);
+    setUser(null);
+  }, [showSuccess, navigate]);
+
+  const value = {
+    user,
+    loading,
+    login,
+    register,
+    logout,
+    isAuthenticated: !!user && !sessionManager._isLoggingOut,
   };
 
-  return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      authChecked, 
-      login, 
-      register, 
-      logout,
-      refreshSession,
-      isAuthenticated: !!user && !!tokenStorage.getToken()
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+
+AuthProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+};
