@@ -5,40 +5,56 @@
 import { tokenBlacklist } from '../services/blacklist.service.js';
 import { verifyAccessToken } from '../services/token.service.js';
 import { getDatabase } from '../services/db.service.js';
+import { unauthorizeResponse } from '../utils/response.js';
 
-export const authenticate = (req, res, next) => {
+export const authenticate = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    let token = req.cookies?.accessToken;
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Authentication required' });
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
     }
 
-    const token = authHeader.split(' ')[1];
-    
+    if (!token) {
+      return unauthorizeResponse(res, 'Authentication required');
+    }
+
     if (tokenBlacklist.isBlacklisted(token)) {
-      return res.status(401).json({ message: 'Token has been invalidated' });
+      return unauthorizeResponse(res, 'Token has been invalidated. Please login again.');
     }
 
     const decoded = verifyAccessToken(token);
     if (!decoded) {
-      return res.status(401).json({ message: 'Invalid or expired token' });
+      return unauthorizeResponse(res, 'Invalid or expired token');
     }
 
-    // Check if user exists and is active
     const db = getDatabase();
     const user = db.users.find(u => u.id === decoded.id);
+    
     if (!user) {
-      return res.status(401).json({ message: 'User not found' });
+      return unauthorizeResponse(res, 'User not found');
     }
+    
     if (user.active === false) {
-      return res.status(403).json({ message: 'Account is deactivated' });
+      return unauthorizeResponse(res, 'Account is deactivated', 403);
     }
 
-    req.user = decoded;
+    req.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name
+    };
+    req.accessToken = token;
+    
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
-    return res.status(500).json({ message: 'Authentication error' });
+    console.error('auth error:', error);
+    return unauthorizeResponse(res, 'Authentication failed');
   }
 };
+
+export const authentication = authenticate;
