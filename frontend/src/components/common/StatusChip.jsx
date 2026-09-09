@@ -1,5 +1,5 @@
-//Note: This file is a status chip component for the application. It provides a reusable 
-// chip component to display status and priority information with customizable colors and labels.
+
+import PropTypes from 'prop-types';
 import { Chip } from "@mui/material";
 
 const createChipConfig = (config) => ({
@@ -73,6 +73,12 @@ const PRIORITY_CONFIG = {
     bgColor: "rgba(212,84,84,0.10)",
     borderColor: "rgba(212,84,84,0.2)",
   }),
+  critical: createChipConfig({
+    label: "Critical",
+    color: "#d45454",
+    bgColor: "rgba(212,84,84,0.15)",
+    borderColor: "rgba(212,84,84,0.3)",
+  }),
 };
 
 const ChipBase = ({ config, size = "small" }) => (
@@ -92,10 +98,30 @@ const ChipBase = ({ config, size = "small" }) => (
   />
 );
 
+ChipBase.propTypes = {
+  config: PropTypes.shape({
+    label: PropTypes.string.isRequired,
+    color: PropTypes.string.isRequired,
+    bgColor: PropTypes.string.isRequired,
+    borderColor: PropTypes.string.isRequired,
+  }).isRequired,
+  size: PropTypes.string,
+};
+
 export const StatusChip = ({ status, size = "small" }) => (
   <ChipBase config={STATUS_CONFIG[status] || STATUS_CONFIG.todo} size={size} />
 );
 
+StatusChip.propTypes = {
+  status: PropTypes.string.isRequired,
+  size: PropTypes.string,
+};
+
 export const PriorityChip = ({ priority, size = "small" }) => (
   <ChipBase config={PRIORITY_CONFIG[priority] || PRIORITY_CONFIG.medium} size={size} />
 );
+
+PriorityChip.propTypes = {
+  priority: PropTypes.string.isRequired,
+  size: PropTypes.string,
+};
