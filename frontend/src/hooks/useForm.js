@@ -1,20 +1,17 @@
-// Note: This file is a custom React hook that manages form state. It provides a way to handle input 
-// changes, select changes, multi-select changes, and form reset functionality. 
-import { useState } from "react";
+//note : Manages form data and input changes without writing repetitive useState code for every field.
+import { useState } from 'react';
 
 export function useForm(initialValues) {
   const [form, setForm] = useState(initialValues);
-
-  const handleChange = (field) => (e) => {
-    setForm({ ...form, [field]: e.target.value });
+  const handleChange = field => e => {
+    const value = e?.target?.value ?? e;
+    setForm(prev => ({ ...prev, [field]: value }));
   };
-
-  const handleSelectChange = (field) => (e) => {
-    setForm({ ...form, [field]: e.target.value });
+  const handleMultiSelectChange = field => e => {
+    setForm(prev => ({ ...prev, [field]: e.target.value }));
   };
-
-  const handleMultiSelectChange = (field) => (e) => {
-    setForm({ ...form, [field]: e.target.value });
+  const handleSelectChange = field => e => {
+    setForm(prev => ({ ...prev, [field]: e.target.value }));
   };
 
   const resetForm = () => {
@@ -25,8 +22,8 @@ export function useForm(initialValues) {
     form,
     setForm,
     handleChange,
-    handleSelectChange,
     handleMultiSelectChange,
+    handleSelectChange,
     resetForm,
   };
 }
